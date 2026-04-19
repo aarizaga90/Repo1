@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OposTest">
+  <meta name="theme-color" content="#f5a623">
+  <title>OposTest</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #242838;
+      --border: #2e3347;
+      --text: #e8eaf0;
+      --muted: #7a7f96;
+      --accent: #f5a623;
+      --accent-dim: rgba(245,166,35,0.12);
+      --correct: #22c55e;
+      --correct-dim: rgba(34,197,94,0.12);
+      --wrong: #ef4444;
+      --wrong-dim: rgba(239,68,68,0.12);
+      --radius: 16px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%; background: var(--bg); color: var(--text);
+      font-family: 'Nunito', sans-serif; overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #app {
+      height: 100%; display: flex; flex-direction: column;
+      padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+    }
+
+```
+/* ── SCREENS ── */
+.screen { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+.screen.active { display: flex; }
+
+/* ── HOME ── */
+#home {
+  padding: 28px 24px 24px;
+  background: radial-gradient(ellipse at 80% 0%, rgba(245,166,35,0.08) 0%, transparent 60%);
+}
+.home-header { margin-bottom: 32px; }
+.home-logo { font-size: 11px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.home-title { font-family: 'Playfair Display', serif; font-size: 32px; line-height: 1.2; color: var(--text); }
+.home-title span { color: var(--accent); }
+
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 28px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px 12px; text-align: center;
+}
+.stat-card .val { font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1; }
+.stat-card .lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+.progress-wrap { margin-bottom: 28px; }
+.progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 600; }
+.progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.5s ease; }
+
+.btn {
+  display: block; width: 100%; padding: 16px; border-radius: var(--radius);
+  font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800;
+  cursor: pointer; border: none; text-align: center; transition: all 0.15s ease;
+  letter-spacing: 0.3px;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #0f1117; margin-bottom: 12px; }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); margin-bottom: 12px; }
+.btn-ghost { background: transparent; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); }
+
+.mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.mode-btn {
+  padding: 14px 12px; border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; text-align: center;
+  transition: all 0.15s ease; font-family: 'Nunito', sans-serif;
+}
+.mode-btn:active { transform: scale(0.97); }
+.mode-btn.selected { border-color: var(--accent); background: var(--accent-dim); }
+.mode-icon { font-size: 22px; margin-bottom: 4px; }
+.mode-label { font-size: 13px; font-weight: 700; color: var(--text); }
+.mode-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.home-section-title { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; margin-top: 20px; }
+
+/* ── STUDY ── */
+#study { padding: 0; }
+.study-header {
+  padding: 14px 20px 14px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+  background: var(--bg);
+}
+.back-btn {
+  width: 36px; height: 36px; border-radius: 10px; background: var(--surface);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 18px; flex-shrink: 0;
+}
+.study-prog-wrap { flex: 1; }
+.study-prog-text { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; display: flex; justify-content: space-between; }
+.study-prog-bar { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+.study-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
+
+.question-scroll { flex: 1; overflow-y: auto; padding: 20px 20px 8px; }
+.question-num { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+.question-text {
+  font-family: 'Playfair Display', serif; font-size: 19px; line-height: 1.55;
+  color: var(--text); margin-bottom: 24px;
+}
+
+.options-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; }
+.option {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; cursor: pointer;
+  transition: all 0.15s ease; text-align: left; width: 100%;
+  font-family: 'Nunito', sans-serif;
+}
+.option:active { transform: scale(0.98); }
+.option.selected-wrong { border-color: var(--wrong); background: var(--wrong-dim); }
+.option.selected-correct { border-color: var(--correct); background: var(--correct-dim); }
+.option.show-correct { border-color: var(--correct); background: var(--correct-dim); }
+.option.disabled { cursor: default; }
+.option-letter {
+  width: 26px; height: 26px; border-radius: 8px; background: var(--surface2);
+  border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: var(--muted); flex-shrink: 0;
+  margin-top: 1px; transition: all 0.15s;
+}
+.option.selected-wrong .option-letter { background: var(--wrong); border-color: var(--wrong); color: #fff; }
+.option.selected-correct .option-letter,
+.option.show-correct .option-letter { background: var(--correct); border-color: var(--correct); color: #fff; }
+.option-text { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.45; }
+
+.answer-footer {
+  padding: 16px 20px; border-top: 1px solid var(--border);
+  flex-shrink: 0; background: var(--bg);
+}
+.feedback-text {
+  text-align: center; font-size: 14px; font-weight: 700;
+  margin-bottom: 12px; padding: 10px; border-radius: 10px;
+}
+.feedback-text.correct { color: var(--correct); background: var(--correct-dim); }
+.feedback-text.wrong { color: var(--wrong); background: var(--wrong-dim); }
+.next-btn {
+  width: 100%; padding: 15px; border-radius: var(--radius); border: none;
+  background: var(--accent); color: #0f1117; font-family: 'Nunito', sans-serif;
+  font-size: 16px; font-weight: 800; cursor: pointer; transition: all 0.15s;
+}
+.next-btn:active { transform: scale(0.97); }
+
+/* ── RESULTS ── */
+#results { justify-content: center; align-items: center; padding: 32px 24px; text-align: center; }
+.result-emoji { font-size: 64px; margin-bottom: 16px; }
+.result-title { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--text); margin-bottom: 8px; }
+.result-sub { font-size: 15px; color: var(--muted); margin-bottom: 32px; line-height: 1.5; }
+.result-score {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  padding: 24px; margin-bottom: 32px; width: 100%;
+}
+.score-big { font-size: 56px; font-weight: 800; color: var(--accent); line-height: 1; }
+.score-label { font-size: 13px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+.score-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+.score-item .val { font-size: 22px; font-weight: 800; }
+.score-item .lbl { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.score-item.c .val { color: var(--correct); }
+.score-item.w .val { color: var(--wrong); }
+
+/* ── HISTORY ── */
+#history { padding: 20px 20px 24px; }
+.hist-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.hist-title { font-family: 'Playfair Display', serif; font-size: 22px; flex: 1; }
+.hist-list { display: flex; flex-direction: column; gap: 10px; }
+.hist-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+}
+.hist-num { font-size: 11px; font-weight: 800; color: var(--muted); min-width: 28px; }
+.hist-q { font-size: 13px; color: var(--text); flex: 1; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hist-badges { display: flex; gap: 6px; flex-shrink: 0; }
+.badge { font-size: 11px; font-weight: 800; padding: 3px 7px; border-radius: 6px; }
+.badge.c { background: var(--correct-dim); color: var(--correct); }
+.badge.w { background: var(--wrong-dim); color: var(--wrong); }
+
+/* ── IMPORT ── */
+#import-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  z-index: 100; align-items: flex-end; padding-bottom: var(--safe-bottom);
+}
+#import-overlay.open { display: flex; }
+.import-sheet {
+  background: var(--surface); border-radius: 24px 24px 0 0;
+  padding: 24px; width: 100%; border-top: 1px solid var(--border);
+}
+.sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+.import-title { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 6px; }
+.import-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+.import-format {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px; margin-bottom: 20px; font-size: 12px; color: var(--muted);
+  font-family: monospace; line-height: 1.6; overflow-x: auto;
+}
+.file-drop {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 28px 20px; text-align: center; cursor: pointer; margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+.file-drop:hover { border-color: var(--accent); }
+.file-drop input { display: none; }
+.file-drop-icon { font-size: 32px; margin-bottom: 8px; }
+.file-drop-text { font-size: 14px; font-weight: 700; color: var(--text); }
+.file-drop-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.import-status { font-size: 13px; font-weight: 700; text-align: center; padding: 8px; border-radius: 8px; display: none; }
+.import-status.ok { color: var(--correct); background: var(--correct-dim); display: block; }
+.import-status.err { color: var(--wrong); background: var(--wrong-dim); display: block; }
+
+/* ── NO QUESTIONS ── */
+.empty-state { text-align: center; padding: 32px; }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-title { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 8px; }
+.empty-sub { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+/* animations */
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.screen.active { animation: slideUp 0.25s ease; }
+.option { animation: slideUp 0.2s ease both; }
+.option:nth-child(1) { animation-delay: 0.02s; }
+.option:nth-child(2) { animation-delay: 0.06s; }
+.option:nth-child(3) { animation-delay: 0.10s; }
+.option:nth-child(4) { animation-delay: 0.14s; }
+```
+
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ─── HOME ─── -->
+
+  <div id="home" class="screen active">
+    <div class="home-header">
+      <div class="home-logo">Osakidetza · 2026</div>
+      <div class="home-title">Prepara tu <span>oposición</span></div>
+    </div>
+
+```
+<div class="stats-row">
+  <div class="stat-card"><div class="val" id="stat-total">0</div><div class="lbl">Pregs.</div></div>
+  <div class="stat-card"><div class="val" id="stat-pct">—</div><div class="lbl">Acierto</div></div>
+  <div class="stat-card"><div class="val" id="stat-done">0</div><div class="lbl">Hechas</div></div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-label">
+    <span>Progreso general</span>
+    <span id="prog-label">0 / 0</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+</div>
+
+<div id="empty-home" class="empty-state" style="display:none">
+  <div class="empty-icon">📋</div>
+  <div class="empty-title">Sin preguntas cargadas</div>
+  <div class="empty-sub">Importa tu banco de preguntas en JSON para empezar a estudiar</div>
+</div>
+
+<div id="home-actions">
+  <div class="home-section-title">Modo de estudio</div>
+  <div class="mode-row">
+    <div class="mode-btn selected" data-mode="all" onclick="selectMode(this,'all')">
+      <div class="mode-icon">📚</div>
+      <div class="mode-label">Todas</div>
+      <div class="mode-sub">En orden</div>
+    </div>
+    <div class="mode-btn" data-mode="shuffle" onclick="selectMode(this,'shuffle')">
+      <div class="mode-icon">🔀</div>
+      <div class="mode-label">Aleatorio</div>
+      <div class="mode-sub">Orden mixto</div>
+    </div>
+    <div class="mode-btn" data-mode="wrong" onclick="selectMode(this,'wrong')">
+      <div class="mode-icon">❌</div>
+      <div class="mode-label">Falladas</div>
+      <div class="mode-sub">Solo errores</div>
+    </div>
+    <div class="mode-btn" data-mode="unseen" onclick="selectMode(this,'unseen')">
+      <div class="mode-icon">🆕</div>
+      <div class="mode-label">Sin ver</div>
+      <div class="mode-sub">No respondidas</div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="startStudy()">▶  Empezar</button>
+  <button class="btn btn-secondary" onclick="showScreen('history')">📊 Historial de respuestas</button>
+</div>
+
+<button class="btn btn-ghost" onclick="openImport()">⬆ Importar banco de preguntas (JSON)</button>
+```
+
+  </div>
+
+  <!-- ─── STUDY ─── -->
+
+  <div id="study" class="screen">
+    <div class="study-header">
+      <div class="back-btn" onclick="showScreen('home')">←</div>
+      <div class="study-prog-wrap">
+        <div class="study-prog-text">
+          <span id="prog-current">Pregunta 1</span>
+          <span id="prog-of">de 0</span>
+        </div>
+        <div class="study-prog-bar"><div class="study-prog-fill" id="study-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+
+```
+<div class="question-scroll" id="question-scroll">
+  <div class="question-num" id="q-num"></div>
+  <div class="question-text" id="q-text"></div>
+  <div class="options-list" id="options-list"></div>
+</div>
+
+<div class="answer-footer" id="answer-footer" style="display:none">
+  <div class="feedback-text" id="feedback-text"></div>
+  <button class="next-btn" id="next-btn" onclick="nextQuestion()">Siguiente →</button>
+</div>
+```
+
+  </div>
+
+  <!-- ─── RESULTS ─── -->
+
+  <div id="results" class="screen">
+    <div class="result-emoji" id="res-emoji">🎉</div>
+    <div class="result-title" id="res-title">¡Sesión completada!</div>
+    <div class="result-sub" id="res-sub"></div>
+    <div class="result-score">
+      <div class="score-big" id="res-pct">0%</div>
+      <div class="score-label">Tasa de acierto</div>
+      <div class="score-detail">
+        <div class="score-item c"><div class="val" id="res-correct">0</div><div class="lbl">Correctas</div></div>
+        <div class="score-item w"><div class="val" id="res-wrong">0</div><div class="lbl">Incorrectas</div></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="showScreen('home'); refreshHome()">Volver al inicio</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="startStudy()">Repetir sesión</button>
+  </div>
+
+  <!-- ─── HISTORY ─── -->
+
+  <div id="history" class="screen">
+    <div class="hist-header">
+      <div class="back-btn" onclick="showScreen('home')">←</div>
+      <div class="hist-title">Historial</div>
+      <button onclick="clearHistory()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700">Borrar</button>
+    </div>
+    <div id="hist-list" class="hist-list"></div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ─── IMPORT OVERLAY ─── -->
+
+<div id="import-overlay" onclick="closeImportOutside(event)">
+  <div class="import-sheet">
+    <div class="sheet-handle"></div>
+    <div class="import-title">Importar preguntas</div>
+    <div class="import-sub">Sube un fichero <strong>.json</strong> con tu banco de preguntas. Las preguntas existentes se <strong>reemplazarán</strong>.</div>
+    <div class="import-format">
+[<br>
+&nbsp;{<br>
+&nbsp;&nbsp;"id": 1,<br>
+&nbsp;&nbsp;"pregunta": "¿Texto de la pregunta?",<br>
+&nbsp;&nbsp;"opciones": ["A", "B", "C", "D"],<br>
+&nbsp;&nbsp;"correcta": 0<br>
+&nbsp;},<br>
+&nbsp;...<br>
+]
+    </div>
+    <label class="file-drop">
+      <input type="file" accept=".json" onchange="handleFileImport(event)">
+      <div class="file-drop-icon">📂</div>
+      <div class="file-drop-text">Toca para seleccionar archivo</div>
+      <div class="file-drop-sub">Formato JSON · hasta 700 preguntas</div>
+    </label>
+    <div class="import-status" id="import-status"></div>
+    <button class="btn btn-ghost" onclick="closeImport()" style="margin-top:12px">Cancelar</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let questions = [];
+let session = { queue: [], index: 0, correct: 0, wrong: 0, mode: 'all' };
+let history = {}; // { [id]: { correct: N, wrong: N } }
+let answered = false;
+
+const LS_Q = 'opos_questions';
+const LS_H = 'opos_history';
+
+// ═══════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════
+function boot() {
+  try { questions = JSON.parse(localStorage.getItem(LS_Q)) || []; } catch { questions = []; }
+  try { history = JSON.parse(localStorage.getItem(LS_H)) || {}; } catch { history = {}; }
+  refreshHome();
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+
+function save() {
+  localStorage.setItem(LS_Q, JSON.stringify(questions));
+  localStorage.setItem(LS_H, JSON.stringify(history));
+}
+
+// ═══════════════════════════════════════════════
+//  HOME
+// ═══════════════════════════════════════════════
+let selectedMode = 'all';
+
+function selectMode(el, mode) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedMode = mode;
+}
+
+function refreshHome() {
+  const total = questions.length;
+  const done = Object.keys(history).length;
+  const totalCorrect = Object.values(history).reduce((a, h) => a + h.correct, 0);
+  const totalAnswered = Object.values(history).reduce((a, h) => a + h.correct + h.wrong, 0);
+  const pct = totalAnswered > 0 ? Math.round(totalCorrect / totalAnswered * 100) : null;
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-pct').textContent = pct !== null ? pct + '%' : '—';
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('prog-label').textContent = `${done} / ${total}`;
+  document.getElementById('prog-fill').style.width = total > 0 ? (done / total * 100) + '%' : '0%';
+
+  const emptyEl = document.getElementById('empty-home');
+  const actionsEl = document.getElementById('home-actions');
+  if (total === 0) {
+    emptyEl.style.display = 'block';
+    actionsEl.style.display = 'none';
+  } else {
+    emptyEl.style.display = 'none';
+    actionsEl.style.display = 'block';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  STUDY
+// ═══════════════════════════════════════════════
+function buildQueue(mode) {
+  let pool = [...questions];
+  if (mode === 'wrong') {
+    pool = pool.filter(q => history[q.id] && history[q.id].wrong > 0);
+  } else if (mode === 'unseen') {
+    pool = pool.filter(q => !history[q.id]);
+  }
+  if (mode === 'shuffle' || mode === 'wrong' || mode === 'unseen') {
+    pool = pool.sort(() => Math.random() - 0.5);
+  }
+  return pool;
+}
+
+function startStudy() {
+  if (questions.length === 0) return;
+  const queue = buildQueue(selectedMode);
+  if (queue.length === 0) {
+    alert(selectedMode === 'wrong' ? 'No tienes preguntas falladas 🎉' : 'No hay preguntas en esta categoría');
+    return;
+  }
+  session = { queue, index: 0, correct: 0, wrong: 0, mode: selectedMode };
+  showScreen('study');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = session.queue[session.index];
+  const total = session.queue.length;
+  const idx = session.index;
+  answered = false;
+
+  document.getElementById('q-num').textContent = `Pregunta ${idx + 1} de ${total}`;
+  document.getElementById('q-text').textContent = q.pregunta;
+  document.getElementById('prog-current').textContent = `Pregunta ${idx + 1}`;
+  document.getElementById('prog-of').textContent = `de ${total}`;
+  document.getElementById('study-fill').style.width = ((idx) / total * 100) + '%';
+  document.getElementById('answer-footer').style.display = 'none';
+  document.getElementById('question-scroll').scrollTop = 0;
+
+  const list = document.getElementById('options-list');
+  list.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+  q.opciones.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.innerHTML = `<span class="option-letter">${letters[i]}</span><span class="option-text">${opt}</span>`;
+    btn.onclick = () => selectAnswer(i);
+    list.appendChild(btn);
+  });
+}
+
+function selectAnswer(chosen) {
+  if (answered) return;
+  answered = true;
+  const q = session.queue[session.index];
+  const correct = q.correcta;
+  const opts = document.querySelectorAll('.option');
+
+  opts.forEach(o => { o.classList.add('disabled'); o.onclick = null; });
+
+  if (chosen === correct) {
+    opts[chosen].classList.add('selected-correct');
+    session.correct++;
+    showFeedback(true);
+    recordHistory(q.id, true);
+  } else {
+    opts[chosen].classList.add('selected-wrong');
+    opts[correct].classList.add('show-correct');
+    session.wrong++;
+    showFeedback(false);
+    recordHistory(q.id, false);
+  }
+
+  const footer = document.getElementById('answer-footer');
+  footer.style.display = 'block';
+  const isLast = session.index >= session.queue.length - 1;
+  document.getElementById('next-btn').textContent = isLast ? 'Ver resultados ✓' : 'Siguiente →';
+}
+
+function showFeedback(correct) {
+  const el = document.getElementById('feedback-text');
+  el.className = 'feedback-text ' + (correct ? 'correct' : 'wrong');
+  el.textContent = correct ? '✓ ¡Correcto!' : '✗ Incorrecto';
+}
+
+function nextQuestion() {
+  session.index++;
+  if (session.index >= session.queue.length) {
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+function recordHistory(id, isCorrect) {
+  if (!history[id]) history[id] = { correct: 0, wrong: 0 };
+  if (isCorrect) history[id].correct++;
+  else history[id].wrong++;
+  save();
+}
+
+// ═══════════════════════════════════════════════
+//  RESULTS
+// ═══════════════════════════════════════════════
+function showResults() {
+  const total = session.correct + session.wrong;
+  const pct = total > 0 ? Math.round(session.correct / total * 100) : 0;
+  let emoji = '😐', title = 'Sesión completada';
+  if (pct >= 90) { emoji = '🏆'; title = '¡Sobresaliente!'; }
+  else if (pct >= 70) { emoji = '🎯'; title = '¡Muy bien!'; }
+  else if (pct >= 50) { emoji = '📚'; title = 'Sigue practicando'; }
+  else { emoji = '💪'; title = 'Hay que repasar'; }
+
+  document.getElementById('res-emoji').textContent = emoji;
+  document.getElementById('res-title').textContent = title;
+  document.getElementById('res-sub').textContent = `Has respondido ${total} preguntas en esta sesión`;
+  document.getElementById('res-pct').textContent = pct + '%';
+  document.getElementById('res-correct').textContent = session.correct;
+  document.getElementById('res-wrong').textContent = session.wrong;
+  showScreen('results');
+}
+
+// ═══════════════════════════════════════════════
+//  HISTORY SCREEN
+// ═══════════════════════════════════════════════
+function renderHistory() {
+  const list = document.getElementById('hist-list');
+  const answered = questions.filter(q => history[q.id]);
+  if (answered.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">Sin historial</div><div class="empty-sub">Las preguntas respondidas aparecerán aquí</div></div>';
+    return;
+  }
+  list.innerHTML = answered.map(q => {
+    const h = history[q.id];
+    return `<div class="hist-item">
+      <span class="hist-num">#${q.id}</span>
+      <span class="hist-q">${q.pregunta}</span>
+      <div class="hist-badges">
+        <span class="badge c">✓ ${h.correct}</span>
+        <span class="badge w">✗ ${h.wrong}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function clearHistory() {
+  if (!confirm('¿Borrar todo el historial?')) return;
+  history = {};
+  save();
+  renderHistory();
+  refreshHome();
+}
+
+// ═══════════════════════════════════════════════
+//  IMPORT
+// ═══════════════════════════════════════════════
+function openImport() {
+  document.getElementById('import-overlay').classList.add('open');
+  document.getElementById('import-status').className = 'import-status';
+  document.getElementById('import-status').textContent = '';
+}
+function closeImport() {
+  document.getElementById('import-overlay').classList.remove('open');
+}
+function closeImportOutside(e) {
+  if (e.target === document.getElementById('import-overlay')) closeImport();
+}
+
+function handleFileImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data) || data.length === 0) throw new Error('Array vacío');
+      // Validate first item
+      const sample = data[0];
+      if (!sample.pregunta || !Array.isArray(sample.opciones) || sample.opciones.length < 2) {
+        throw new Error('Formato incorrecto');
+      }
+      // Ensure correcta field exists
+      data.forEach((q, i) => {
+        if (q.id === undefined) q.id = i + 1;
+        if (q.correcta === undefined) q.correcta = 0;
+      });
+      questions = data;
+      save();
+      refreshHome();
+      showStatus(`✓ ${data.length} preguntas importadas correctamente`, true);
+      setTimeout(closeImport, 1800);
+    } catch (err) {
+      showStatus('✗ Error al leer el fichero: ' + err.message, false);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function showStatus(msg, ok) {
+  const el = document.getElementById('import-status');
+  el.textContent = msg;
+  el.className = 'import-status ' + (ok ? 'ok' : 'err');
+}
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'history') renderHistory();
+  if (id === 'home') refreshHome();
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+boot();
+</script>
+
+</body>
+</html>

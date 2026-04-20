@@ -22,8 +22,19 @@ async function initAdminList() {
         filteredQuestions = [...allQuestions]; // Al principio, el filtro son todas
         
         // 3. Resetear scroll y pintar
+        const countEl = document.getElementById('search-count');
+        if(countEl) countEl.textContent = '${allQuestions.lenght} preguntas';
+
         container.innerHTML = '';
         currentOffset = 0;
+
+container.onclick = (e) => {
+    if (e.target.clasList.contains('btn-edit')) {
+        const id = parseInt(e.target.dataset.id);
+        abrirEditorCompleto(id);
+    }
+};
+
         renderMoreQuestions();
         
         // 4. Activar el buscador (si no estaba ya activado)

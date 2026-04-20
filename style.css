@@ -155,23 +155,33 @@ button {
     flex-direction: column;
     gap: 12px;
     position: relative;
+    padding-top: 40px;
+}
+
+.q-admin-header {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    color: var(--accent);
+    font-weight: bold;
 }
 
 /* El botón de editar propiamente dicho */
 .btn-edit {
     position: absolute;
-    top: 14px;
-    right: 14px;
+    top: 10px;
+    right: 10px;
     background: rgba(245, 166, 35, 0.1); /* Color acento muy suave de fondo */
     color: var(--accent); /* Tu color naranja/amarillo */
     border: 1px solid var(--accent);
-    padding: 6px 16px;
+    padding: 4px 10px;
     border-radius: 20px;
     font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.2s ease;
+    width: auto;
 }
 
 .btn-edit:active {

@@ -77,11 +77,58 @@ function renderMoreQuestions() {
         div.innerHTML = `
             <div class="q-admin-header">#${q.id}</div>
             <div class="q-admin-text">${q.pregunta}</div>
-            <button class="btn-edit" onclick="alert('ID: ' + ${q.id})">Editar</button>
+            <button class="btn-edit" data-id="${q.id}">Editar</button>
         `;
         fragment.appendChild(div);
+        div.querySelector('.btn-edit').addEventListener('click', () => {
+            abrirEditorCompleto(q.Id)
+        });
     });
     
     container.appendChild(fragment);
     currentOffset += limit;
+}
+async function abrirEditorCompleto(id) {
+    const q = await db.preguntas.get(id);
+    if (!q) return;
+
+    document.getElementById('edit-text').value = q.pregunta;
+    const optsContainer = document.getElementById('edit-options-list');
+    optsContainer.innerHTML = '<label style="color:var(--muted); font-size:12px;">OPCIONES (Marca la correcta)</label>';
+
+    q.opciones.forEach((opt, i) => {
+        const div = document.createElement('div');
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.style.gap = "10px";
+        div.style.marginTop = "10px";
+        
+        div.innerHTML = `
+            <input type="radio" name="correcta" value="${i}" ${q.correcta === i ? 'checked' : ''}>
+            <input type="text" class="edit-opt-input" value="${opt}" style="flex:1; background:var(--surface2); color:white; border:1px solid var(--border); border-radius:8px; padding:8px;">
+        `;
+        optsContainer.appendChild(div);
+    });
+
+    // Guardar el ID en el botón de guardar para saber cuál actualizar
+    document.getElementById('save-edit').onclick = () => guardarCambios(id);
+    document.getElementById('cancel-edit').onclick = () => showScreen('admin-list');
+
+    showScreen('edit-screen');
+}
+
+async function guardarCambios(id) {
+    const nuevoTexto = document.getElementById('edit-text').value;
+    const nuevasOpciones = Array.from(document.querySelectorAll('.edit-opt-input')).map(input => input.value);
+    const nuevaCorrecta = parseInt(document.querySelector('input[name="correcta"]:checked').value);
+
+    await db.preguntas.update(id, {
+        pregunta: nuevoTexto,
+        opciones: nuevasOpciones,
+        correcta: nuevaCorrecta
+    });
+
+    alert("¡Pregunta actualizada!");
+    initAdminList(); // Refresca la lista
+    showScreen('admin-list');
 }

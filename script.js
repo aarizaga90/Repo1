@@ -65,6 +65,8 @@ function refreshHome() {
     document.getElementById('stat-done').textContent = done;
     document.getElementById('prog-label').textContent = `${done} / ${total}`;
     document.getElementById('prog-fill').style.width = total > 0 ? (done / total * 100) + '%' : '0%';
+    document.getElementById('range-end').value = questions.length;
+    document.getElementById('range-end').max = questions.length;
 
     const emptyEl = document.getElementById('empty-home');
     const actionsEl = document.getElementById('home-actions');
@@ -95,12 +97,24 @@ function buildQueue(mode) {
 
 function startStudy() {
     if (questions.length === 0) return;
-    const queue = buildQueue(selectedMode);
+
+    let queue = buildQueue(selectedMode);
+
+    // Si el modo es "Todas" (en orden), aplicamos el rango
+    if (selectedMode === 'all') {
+        const start = parseInt(document.getElementById('range-start').value) - 1;
+        const end = parseInt(document.getElementById('range-end').value);
+        queue = queue.slice(start, end);
+    }
+    
     if (queue.length === 0) {
         alert(selectedMode === 'wrong' ? 'No tienes preguntas falladas 🎉' : 'No hay preguntas en esta categoría');
         return;
     }
+    
     session = { queue, index: 0, correct: 0, wrong: 0, mode: selectedMode };
+    
+    startTimer();
     showScreen('study');
     renderQuestion();
 }
@@ -182,9 +196,40 @@ function recordHistory(id, isCorrect) {
 }
 
 // ═══════════════════════════════════════════════
+//  CRONÓMETRO
+// ═══════════════════════════════════════════════
+let timerInterval;
+let secondsElapsed = 0;
+
+function startTimer() {
+    stopTimer(); // Limpiamos por si acaso
+    secondsElapsed = 0;
+    timerInterval = setInterval(() => {
+        secondsElapsed++;
+        updateTimerDisplay();
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+}
+
+function updateTimerDisplay() {
+    const mins = Math.floor(secondsElapsed / 60);
+    const secs = secondsElapsed % 60;
+    const display = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    // Asegúrate de añadir un id="timer" en tu HTML
+    const el = document.getElementById('timer');
+    if (el) el.textContent = display;
+}
+
+// ═══════════════════════════════════════════════
 //  RESULTS
 // ═══════════════════════════════════════════════
 function showResults() {
+    
+    stopTimer();
+    
     const total = session.correct + session.wrong;
     const pct = total > 0 ? Math.round(session.correct / total * 100) : 0;
     let emoji = '😐', title = 'Sesión completada';

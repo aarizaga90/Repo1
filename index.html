@@ -57,6 +57,12 @@
       <div class="mode-label">Todas</div>
       <div class="mode-sub">En orden</div>
     </div>
+      <div id="range-selector" style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
+          <span style="font-size: 12px; color: var(--muted);">Desde:</span>
+          <input type="number" id="range-start" value="1" min="1" style="width: 60px; background: var(--surface2); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 5px;">
+          <span style="font-size: 12px; color: var(--muted);">Hasta:</span>
+          <input type="number" id="range-end" value="100" style="width: 60px; background: var(--surface2); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 5px;">
+      </div>
     <div class="mode-btn" data-mode="shuffle" onclick="selectMode(this,'shuffle')">
       <div class="mode-icon">🔀</div>
       <div class="mode-label">Aleatorio</div>
@@ -92,6 +98,7 @@
       <div class="study-prog-wrap">
         <div class="study-prog-text">
           <span id="prog-current">Pregunta 1</span>
+            <span id="timer" style="color: var(--accent); font-family: monospace; font-size: 14px;">00:00</span>
           <span id="prog-of">de 0</span>
         </div>
         <div class="study-prog-bar"><div class="study-prog-fill" id="study-fill" style="width:0%"></div></div>

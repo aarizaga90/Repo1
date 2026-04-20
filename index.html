@@ -25,10 +25,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
-    <script src="./dexie.js" defer></script>
+    <script src="dexie.js" defer></script>
     <script src="db.js" defer></script>
     <script src="preguntas.js" defer></script>
     <script src="script.js" defer></script>
+    <script src="admin.js" defer></script>
 </head>
 <body>
 <div id="app">
@@ -110,6 +111,10 @@
                 ▶ Empezar sesión
             </button>
             <button type="button" id="history-btn" class="btn btn-secondary">📊 Historial de respuestas</button>
+            <button type="button" id="admin-btn" class="btn btn-secondary" style="margin-top: 8px;">
+    ⚙️ Gestionar preguntas
+</button>
+
         </div>
 
         <button class="btn btn-ghost" id="open-import-btn">⬆ Importar banco de preguntas (JSON)</button>
@@ -169,7 +174,7 @@
 </div>
  <section id="admin-list" class="screen">
     <header class="hist-header">
-        <button class="back-btn back-to-home">←</button>
+        <button class="back-btn back-to-home" aria-label="Volver al inicio">←</button>
         <h2 class="hist-title">Banco de Preguntas</h2>
     </header>
     

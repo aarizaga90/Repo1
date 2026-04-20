@@ -10,6 +10,26 @@ const LS_Q = 'opos_questions';
 const LS_H = 'opos_history';
 
 // ═══════════════════════════════════════════════
+//  DB
+// ═══════════════════════════════════════════════
+
+const db = new Dexie("OposDB");
+
+// Definimos las tablas (Preguntas y Estadísticas)
+db.version(1).stores({
+    questions: 'id, pregunta, *opciones, correcta',
+    stats: 'id, vistas, racha, last, weight'
+});
+
+async function initDatabase() {
+    const count = await db.preguntas.count();
+    if (count === 0 && typeof DEFAULT_QUESTIONS !== 'undefined') {
+        console.log("Poblando base de datos con 700 preguntas...");
+        await db.preguntas.bulkAdd(DEFAULT_QUESTIONS);
+    }
+}
+
+// ═══════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════
 function boot() {
@@ -25,10 +45,10 @@ function boot() {
         {
             questions = [];
         }
-    } catch {
+    } catch (e) {
         questions = [];
     }
-    try { history = JSON.parse(localStorage.getItem(LS_H)) || {}; } catch { history = {}; }
+    try { history = JSON.parse(localStorage.getItem(LS_H)) || {}; } catch (e) { history = {}; }
     
     refreshHome();
     
@@ -82,6 +102,97 @@ function refreshHome() {
 // ═══════════════════════════════════════════════
 //  STUDY
 // ═══════════════════════════════════════════════
+
+let nextQuestionBuffer = null; // Aquí guardamos la pregunta precargada
+let currentSession = { mode: '', lastId: null };
+
+// --- 3. ALGORITMO SMART (Basado en tu C#) ---
+async function getSmartNextQuestion() {
+    // Obtenemos todos los IDs y estadísticas de una vez (pesan poco)
+    const [allIds, allStats] = await Promise.all([
+        db.preguntas.toCollection().primaryKeys(),
+        db.stats.toArray()
+    ]);
+
+    const statsMap = new Map(allStats.map(s => [s.id, s]));
+    const nuevas = allIds.filter(id => !statsMap.has(id));
+
+    // Excluir la que se acaba de ver para no repetir
+    const candidatas = allIds.filter(id => id !== currentSession.lastId);
+
+    let targetId;
+    const azar = Math.random();
+
+    if (nuevas.length > 0 && azar < 0.6) {
+        // 60% prioridad a nuevas
+        targetId = nuevas[Math.floor(Math.random() * nuevas.length)];
+    } else {
+        // 40% prioridad a repaso de falladas o menos vistas
+        // Buscamos la que tenga mayor "peso" (fallos) o racha baja
+        const repaso = allStats
+            .filter(s => s.id !== currentSession.lastId)
+            .sort((a, b) => (b.peso || 1) - (a.peso || 1));
+
+        targetId = repaso.length > 0 ? repaso[0].id : candidatas[Math.floor(Math.random() * candidatas.length)];
+    }
+
+    // TRAEMOS EL CONTENIDO COMPLETO (el A4 de texto) SOLO DE LA ELEGIDA
+    return await db.preguntas.get(targetId);
+}
+
+// --- 4. TÉCNICA DE PRECARGA (Prefetching) ---
+async function prepareNextQuestion() {
+    console.log("Precargando próxima pregunta en segundo plano...");
+    nextQuestionBuffer = await getSmartNextQuestion();
+}
+
+// --- 5. FLUJO DE LA INTERFAZ ---
+async function startSmartStudy() {
+    currentSession.mode = 'smart';
+    // Primera carga: necesitamos una pregunta YA
+    const primera = await getSmartNextQuestion();
+    renderQuestion(primera);
+
+    // Inmediatamente precargamos la que vendrá después
+    prepareNextQuestion();
+    showScreen('study');
+}
+
+async function handleAnswer(isCorrect, qId) {
+    // 1. Guardar estadística en la DB (Asíncrono)
+    const stat = await db.stats.get(qId) || { id: qId, racha: 0, last: 0, peso: 1 };
+
+    stat.last = Date.now();
+    if (isCorrect) {
+        stat.racha++;
+        stat.peso *= 0.5; // Baja la probabilidad de salir
+    } else {
+        stat.racha = 0;
+        stat.peso *= 2.5; // Sube mucho la probabilidad de salir (repaso urgente)
+    }
+    await db.stats.put(stat);
+
+    // 2. Mostrar feedback al usuario (colores verde/rojo)
+    // ... tu código de feedback visual ...
+
+    // 3. Mientras el usuario ve el feedback, nos aseguramos de que el buffer esté listo
+    if (!nextQuestionBuffer) {
+        await prepareNextQuestion();
+    }
+}
+
+function goToNext() {
+    if (nextQuestionBuffer) {
+        const q = nextQuestionBuffer;
+        currentSession.lastId = q.id;
+        renderQuestion(q);
+
+        // Una vez mostrada, liberamos el buffer y precargamos la SIGUIENTE
+        nextQuestionBuffer = null;
+        prepareNextQuestion();
+    }
+}
+
 function buildQueue(mode) {
     let pool = [...questions];
     if (mode === 'wrong') {
@@ -120,7 +231,16 @@ function startStudy() {
 }
 
 function renderQuestion() {
-    const q = session.queue[session.index];
+    
+    let q;
+    if (selectedMode === 'smart') {
+        q = getSmartQuestion();
+        // Simulamos que la sesión es infinita o de X preguntas
+        session.currentQuestion = q;
+    } else {
+        q = session.queue[session.index];
+    }
+    
     const total = session.queue.length;
     const idx = session.index;
     answered = false;
@@ -189,10 +309,95 @@ function nextQuestion() {
 }
 
 function recordHistory(id, isCorrect) {
-    if (!history[id]) history[id] = { correct: 0, wrong: 0 };
-    if (isCorrect) history[id].correct++;
-    else history[id].wrong++;
+    if (!history[id]) history[id] = { c: 0, w: 0, r: 0, t: 0 };
+
+    history[id].t = Date.now(); // Ultima vez vista
+    if (isCorrect) {
+        history[id].c++; // Total correctas
+        history[id].r++; // Racha actual
+    } else {
+        history[id].w++; // Total fallos
+        history[id].r = 0; // Reset racha
+    }
     save();
+}
+
+// Función para guardar una respuesta con lógica "Smart"
+async function recordSmartAnswer(qId, isCorrect) {
+    const stat = await db.stats.get(qId) || { id: qId, vistas: 0, racha: 0, last: 0, weight: 1.0 };
+
+    stat.vistas++;
+    stat.last = Date.now();
+
+    if (isCorrect) {
+        stat.racha++;
+        // Si acierta, bajamos la prioridad (peso)
+        stat.weight *= 0.8;
+    } else {
+        stat.racha = 0;
+        // Si falla, subimos la prioridad mucho
+        stat.weight *= 2.0;
+    }
+
+    await db.stats.put(stat);
+}
+
+async function getSmartNextId() {
+    const allStats = await db.stats.toArray();
+    const idsVistos = allStats.map(s => s.id);
+
+    // 1. IDs que nunca has visto
+    const todasLasPreguntas = await db.preguntas.toCollection().primaryKeys();
+    const nuevas = todasLasPreguntas.filter(id => !idsVistos.includes(id));
+
+    // 2. Cascada de selección (Lógica C#)
+    let idElegido;
+    const azar = Math.random();
+
+    if (nuevas.length > 0 && azar < 0.7) {
+        // Prioridad 70% a las nuevas (por el gran volumen de texto)
+        idElegido = nuevas[Math.floor(Math.random() * nuevas.length)];
+    } else {
+        // Prioridad a falladas (peso alto) o repaso
+        const repaso = allStats.sort((a, b) => b.peso - a.peso);
+        idElegido = repaso.length > 0 ? repaso[0].id : todasLasPreguntas[0];
+    }
+
+    // 3. Traer SOLO la pregunta elegida (ahorra memoria)
+    return await db.preguntas.get(idElegido);
+}
+
+function getSmartQuestion() {
+    const now = Date.now();
+    // Filtramos para no repetir la última (distancia mínima)
+    let pool = questions.filter(q => q.id !== session.lastId);
+
+    // 1. Población: NUNCA VISTAS
+    const nuevas = pool.filter(q => !history[q.id]);
+
+    // 2. Población: REPASO URGENTE (Falladas o con racha baja)
+    const repaso = pool.filter(q => history[q.id] && history[q.id].r < 3);
+
+    // 3. Población: DOMINADAS (Racha de 3 o más)
+    const dominadas = pool.filter(q => history[q.id] && history[q.id].r >= 3);
+
+    let seleccionada;
+    const azar = Math.random();
+
+    // Simulamos la "Cuota de nuevas" del algoritmo de C#
+    if (nuevas.length > 0 && azar < 0.6) {
+        // 60% probabilidad de priorizar nuevas hasta que se acaben
+        seleccionada = nuevas[Math.floor(Math.random() * nuevas.length)];
+    } else if (repaso.length > 0) {
+        // Si no toca nueva, vamos a por las falladas/pendientes
+        seleccionada = repaso[Math.floor(Math.random() * repaso.length)];
+    } else {
+        // Si todo está dominado, sacamos de la bolsa de dominadas
+        seleccionada = dominadas[Math.floor(Math.random() * dominadas.length)] || pool[0];
+    }
+
+    session.lastId = seleccionada.id;
+    return seleccionada;
 }
 
 // ═══════════════════════════════════════════════
@@ -330,6 +535,12 @@ function showStatus(msg, ok) {
     el.className = 'import-status ' + (ok ? 'ok' : 'err');
 }
 
+//guardar import en DB
+async function importarPreguntas(jsonArray) {
+    await db.preguntas.bulkPut(jsonArray);
+    console.log("700 preguntas guardadas en la DB del iPhone");
+}
+
 // ═══════════════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════════════
@@ -343,6 +554,4 @@ function showScreen(id) {
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', () => {
     boot();
-});

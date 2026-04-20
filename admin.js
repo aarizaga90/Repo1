@@ -68,6 +68,9 @@ function renderMoreQuestions() {
     const container = document.getElementById('questions-list-container');
     if (!container) return;
 
+    const oldSentinel = document.getElementById('sentinel');
+    if(oldSentinel) oldSentinel.remove();
+
     const nextBatch = filteredQuestions.slice(currentOffset, currentOffset + limit);
     
     const fragment = document.createDocumentFragment();
@@ -87,7 +90,30 @@ function renderMoreQuestions() {
     
     container.appendChild(fragment);
     currentOffset += limit;
+    
+    if (currentOffset < filteredQuestions.length)
+{
+    const sentinel = document.createElement('div');
+    sentinel.id = 'sentinel';
+sentinel.style.height = '20px';
+container.appendChild(sentinel);
+setupInfiniteScroll(sentinel);
 }
+}
+
+function setupInfiniteScroll(target) {
+const observer = new
+IntersectionObserver((entries) => {
+if (entries[0].isIntersecting) {
+observer.disconnect();
+//Dejamos de observar este centinela 
+renderMoreQuestions();
+}
+}, { rootMargin: '200px' }); 
+// Carga 200px antes de llegar al final para que sea fluido
+observer. observe(target);
+}
+
 async function abrirEditorCompleto(id) {
     const q = await db.preguntas.get(id);
     if (!q) return;

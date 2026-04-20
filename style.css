@@ -154,11 +154,14 @@ button {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    position: relative;
 }
 
 /* El botón de editar propiamente dicho */
 .btn-edit {
-    align-self: flex-end; /* Lo lleva a la derecha */
+    position: absolute;
+    top: 14px;
+    right: 14px;
     background: rgba(245, 166, 35, 0.1); /* Color acento muy suave de fondo */
     color: var(--accent); /* Tu color naranja/amarillo */
     border: 1px solid var(--accent);

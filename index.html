@@ -166,8 +166,23 @@
         </header>
         <div id="hist-list" class="hist-list"></div>
     </section>
+</div>
+ <section id="admin-list" class="screen">
+    <header class="hist-header">
+        <button class="back-btn back-to-home">←</button>
+        <h2 class="hist-title">Banco de Preguntas</h2>
+    </header>
+    
+    <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Buscar por texto o número...">
+        <div id="search-count" class="search-count">700 preguntas</div>
+    </div>
 
-</div><div id="import-overlay" role="dialog" aria-modal="true" aria-labelledby="import-title">
+    <div id="questions-list-container" class="q-list">
+        </div>
+</section>
+  
+    <div id="import-overlay" role="dialog" aria-modal="true" aria-labelledby="import-title">
     <div class="import-sheet">
         <div class="sheet-handle"></div>
         <h2 class="import-title" id="import-title">Importar preguntas</h2>

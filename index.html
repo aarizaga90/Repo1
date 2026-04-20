@@ -1,190 +1,197 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="OposTest">
-  <meta name="theme-color" content="#f5a623">
-  <title>OposTest</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="OposTest">
+    <meta name="theme-color" content="#f5a623"> 
+
+    <title>OposTest - Prepara tu oposición</title>
+    <meta name="description" content="OposTest - Plataforma para preparar oposiciones con preguntas y estadísticas detalladas.">
+    <meta name="keywords" content="oposiciones, estudio, preguntas, test, Osakidetza">
+
+    <link rel="manifest" href="./manifest.json">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+
+    <script src="./dexie.js" defer></script>
+    <script src="db.js" defer></script>
+    <script src="preguntas.js" defer></script>
+    <script src="script.js" defer></script>
 </head>
 <body>
 <div id="app">
 
-  <!-- ─── HOME ─── -->
+    <main id="home" class="screen active">
+        <header class="home-header">
+            <div class="home-logo">Osakidetza · 2026</div>
+            <h1 class="home-title">Prepara tu <span>oposición</span></h1>
+        </header>
 
-  <div id="home" class="screen active">
-    <div class="home-header">
-      <div class="home-logo">Osakidetza · 2026</div>
-      <div class="home-title">Prepara tu <span>oposición</span></div>
-    </div>
+        <section class="stats-row" aria-label="Estadísticas de progreso">
+            <div class="stat-card"><div class="val" id="stat-total">0</div><div class="lbl">Pregs.</div></div>
+            <div class="stat-card"><div class="val" id="stat-pct">—</div><div class="lbl">Acierto</div></div>
+            <div class="stat-card"><div class="val" id="stat-done">0</div><div class="lbl">Hechas</div></div>
+        </section>
 
+        <section class="progress-wrap" aria-label="Barra de progreso general">
+            <div class="progress-label">
+                <span>Progreso general</span>
+                <span id="prog-label" aria-live="polite">0 / 0</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+            </div>
+        </section>
 
-    
-<div class="stats-row">
-  <div class="stat-card"><div class="val" id="stat-total">0</div><div class="lbl">Pregs.</div></div>
-  <div class="stat-card"><div class="val" id="stat-pct">—</div><div class="lbl">Acierto</div></div>
-  <div class="stat-card"><div class="val" id="stat-done">0</div><div class="lbl">Hechas</div></div>
-</div>
-
-<div class="progress-wrap">
-  <div class="progress-label">
-    <span>Progreso general</span>
-    <span id="prog-label">0 / 0</span>
-  </div>
-  <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
-</div>
-
-<div id="empty-home" class="empty-state" style="display:none">
-  <div class="empty-icon">📋</div>
-  <div class="empty-title">Sin preguntas cargadas</div>
-  <div class="empty-sub">Importa tu banco de preguntas en JSON para empezar a estudiar</div>
-</div>
-
-<div id="home-actions">
-  <div class="home-section-title">Modo de estudio</div>
-  <div class="mode-row">
-    <div class="mode-btn selected" data-mode="all" onclick="selectMode(this,'all')">
-      <div class="mode-icon">📚</div>
-      <div class="mode-label">Todas</div>
-      <div class="mode-sub">En orden</div>
-    </div>
-      <div id="range-selector" style="margin-bottom: 15px; display: flex; gap: 10px; align-items: center;">
-          <span style="font-size: 12px; color: var(--muted);">Desde:</span>
-          <input type="number" id="range-start" value="1" min="1" style="width: 60px; background: var(--surface2); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 5px;">
-          <span style="font-size: 12px; color: var(--muted);">Hasta:</span>
-          <input type="number" id="range-end" value="100" style="width: 60px; background: var(--surface2); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 5px;">
-      </div>
-    <div class="mode-btn" data-mode="shuffle" onclick="selectMode(this,'shuffle')">
-      <div class="mode-icon">🔀</div>
-      <div class="mode-label">Aleatorio</div>
-      <div class="mode-sub">Orden mixto</div>
-    </div>
-      <div class="mode-btn" data-mode="smart" onclick="selectMode(this,'smart')">
-          <div class="mode-icon">🧠</div>
-          <div class="mode-label">Entrenamiento Inteligente</div>
-          <div class="mode-sub">La mejor pregunta, siempre</div>
-      </div>
-    <div class="mode-btn" data-mode="wrong" onclick="selectMode(this,'wrong')">
-      <div class="mode-icon">❌</div>
-      <div class="mode-label">Falladas</div>
-      <div class="mode-sub">Solo errores</div>
-    </div>
-    <div class="mode-btn" data-mode="unseen" onclick="selectMode(this,'unseen')">
-      <div class="mode-icon">🆕</div>
-      <div class="mode-label">Sin ver</div>
-      <div class="mode-sub">No respondidas</div>
-    </div>
-  </div>
-
-  <button class="btn btn-primary" onclick="startStudy()">▶  Empezar</button>
-  <button class="btn btn-secondary" onclick="showScreen('history')">📊 Historial de respuestas</button>
-</div>
-
-<button class="btn btn-ghost" onclick="openImport()">⬆ Importar banco de preguntas (JSON)</button>
-
-    
-
-  </div>
-
-  <!-- ─── STUDY ─── -->
-
-  <div id="study" class="screen">
-    <div class="study-header">
-      <div class="back-btn" onclick="showScreen('home')">←</div>
-      <div class="study-prog-wrap">
-        <div class="study-prog-text">
-          <span id="prog-current">Pregunta 1</span>
-            <span id="timer" style="color: var(--accent); font-family: monospace; font-size: 14px;">00:00</span>
-          <span id="prog-of">de 0</span>
+        <div id="empty-home" class="empty-state" style="display:none">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">Sin preguntas cargadas</div>
+            <div class="empty-sub">Importa tu banco de preguntas en JSON para empezar a estudiar</div>
         </div>
-        <div class="study-prog-bar"><div class="study-prog-fill" id="study-fill" style="width:0%"></div></div>
-      </div>
-    </div>
 
+        <div id="home-actions">
+            <h2 class="home-section-title">Modo de estudio</h2>
 
-<div class="question-scroll" id="question-scroll">
-  <div class="question-num" id="q-num"></div>
-  <div class="question-text" id="q-text"></div>
-  <div class="options-list" id="options-list"></div>
-</div>
+            <div class="mode-row" role="radiogroup" aria-label="Selección de modo de estudio">
+                <button type="button" class="mode-btn selected" data-mode="all" aria-checked="true" role="radio">
+                    <span class="mode-icon">📚</span>
+                    <div class="mode-label">Todas</div>
+                    <div class="mode-sub">En orden</div>
+                </button>
 
-<div class="answer-footer" id="answer-footer" style="display:none">
-  <div class="feedback-text" id="feedback-text"></div>
-  <button class="next-btn" id="next-btn" onclick="nextQuestion()">Siguiente →</button>
-</div>
+                <fieldset id="range-selector" class="range-config" style="border:none; padding:0; margin-bottom:15px;">
+                    <legend class="sr-only" style="display:none">Rango de preguntas</legend>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <label for="range-start" style="font-size: 12px; color: var(--muted);">Desde:</label>
+                        <input type="number" id="range-start" value="1" min="1" style="width: 60px; background: var(--surface2); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 5px;">
+                        <label for="range-end" style="font-size: 12px; color: var(--muted);">Hasta:</label>
+                        <input type="number" id="range-end" value="100" style="width: 60px; background: var(--surface2); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 5px;">
+                    </div>
+                </fieldset>
 
+                <button type="button" class="mode-btn" data-mode="shuffle" aria-checked="false" role="radio">
+                    <span class="mode-icon">🔀</span>
+                    <div class="mode-label">Aleatorio</div>
+                    <div class="mode-sub">Orden mixto</div>
+                </button>
 
-  </div>
+                <button type="button" class="mode-btn" data-mode="smart" aria-checked="false" role="radio">
+                    <span class="mode-icon">🧠</span>
+                    <div class="mode-label">Inteligente</div>
+                    <div class="mode-sub">Mejor opción</div>
+                </button>
 
-  <!-- ─── RESULTS ─── -->
+                <button class="mode-btn" data-mode="wrong" aria-checked="false" role="radio">
+                    <span class="mode-icon" aria-hidden="true">❌</span>
+                    <div class="mode-label">Falladas</div>
+                    <div class="mode-sub">Solo errores</div>
+                </button>
 
-  <div id="results" class="screen">
-    <div class="result-emoji" id="res-emoji">🎉</div>
-    <div class="result-title" id="res-title">¡Sesión completada!</div>
-    <div class="result-sub" id="res-sub"></div>
-    <div class="result-score">
-      <div class="score-big" id="res-pct">0%</div>
-      <div class="score-label">Tasa de acierto</div>
-      <div class="score-detail">
-        <div class="score-item c"><div class="val" id="res-correct">0</div><div class="lbl">Correctas</div></div>
-        <div class="score-item w"><div class="val" id="res-wrong">0</div><div class="lbl">Incorrectas</div></div>
-      </div>
-    </div>
-    <button class="btn btn-primary" onclick="showScreen('home'); refreshHome()">Volver al inicio</button>
-    <button class="btn btn-secondary" style="margin-top:8px" onclick="startStudy()">Repetir sesión</button>
-  </div>
+                <button class="mode-btn" data-mode="unseen" aria-checked="false" role="radio">
+                    <span class="mode-icon" aria-hidden="true">🆕</span>
+                    <div class="mode-label">Sin ver</div>
+                    <div class="mode-sub">No respondidas</div>
+                </button>
+            </div>
 
-  <!-- ─── HISTORY ─── -->
+            <button type="button" id="start-btn" class="btn btn-primary" style="margin-top: 20px;">
+                ▶ Empezar sesión
+            </button>
+            <button type="button" id="history-btn" class="btn btn-secondary">📊 Historial de respuestas</button>
+        </div>
 
-  <div id="history" class="screen">
-    <div class="hist-header">
-      <div class="back-btn" onclick="showScreen('home')">←</div>
-      <div class="hist-title">Historial</div>
-      <button onclick="clearHistory()" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700">Borrar</button>
-    </div>
-    <div id="hist-list" class="hist-list"></div>
-  </div>
+        <button class="btn btn-ghost" id="open-import-btn">⬆ Importar banco de preguntas (JSON)</button>
+    </main>
 
-</div><!-- /app -->
+    <section id="study" class="screen" aria-labelledby="prog-current">
+        <header class="study-header">
+            <button class="back-btn back-to-home" aria-label="Volver al inicio">←</button>
+            <div class="study-prog-wrap">
+                <div class="study-prog-text">
+                    <span id="prog-current" aria-live="polite">Pregunta 1</span>
+                    <span id="timer" style="color: var(--accent); font-family: monospace; font-size: 14px;">00:00</span>
+                    <span id="prog-of">de 0</span>
+                </div>
+                <div class="study-prog-bar">
+                    <div class="study-prog-fill" id="study-fill" style="width:0%"></div>
+                </div>
+            </div>
+        </header>
 
-<!-- ─── IMPORT OVERLAY ─── -->
+        <div class="question-scroll" id="question-scroll">
+            <div class="question-num" id="q-num"></div>
+            <div class="question-text" id="q-text" aria-live="assertive"></div>
+            <div class="options-list" id="options-list" role="group" aria-label="Opciones de respuesta"></div>
+        </div>
 
-<div id="import-overlay" onclick="closeImportOutside(event)">
-  <div class="import-sheet">
-    <div class="sheet-handle"></div>
-    <div class="import-title">Importar preguntas</div>
-    <div class="import-sub">Sube un fichero <strong>.json</strong> con tu banco de preguntas. Las preguntas existentes se <strong>reemplazarán</strong>.</div>
-    <div class="import-format">
-[<br>
-&nbsp;{<br>
-&nbsp;&nbsp;"id": 1,<br>
-&nbsp;&nbsp;"pregunta": "¿Texto de la pregunta?",<br>
-&nbsp;&nbsp;"opciones": ["A", "B", "C", "D"],<br>
-&nbsp;&nbsp;"correcta": 0<br>
-&nbsp;},<br>
-&nbsp;...<br>
+        <footer class="answer-footer" id="answer-footer" style="display:none" aria-live="polite">
+            <div class="feedback-text" id="feedback-text"></div>
+            <button class="next-btn" id="next-btn">Siguiente →</button>
+        </footer>
+    </section>
+
+    <section id="results" class="screen" aria-labelledby="res-title">
+        <div class="result-emoji" id="res-emoji" aria-hidden="true">🎉</div>
+        <h2 class="result-title" id="res-title">¡Sesión completada!</h2>
+        <div class="result-sub" id="res-sub"></div>
+        <div class="result-score">
+            <div class="score-big" id="res-pct">0%</div>
+            <div class="score-label">Tasa de acierto</div>
+            <div class="score-detail">
+                <div class="score-item c"><div class="val" id="res-correct">0</div><div class="lbl">Correctas</div></div>
+                <div class="score-item w"><div class="val" id="res-wrong">0</div><div class="lbl">Incorrectas</div></div>
+            </div>
+        </div>
+        <button class="btn btn-primary" id="finish-btn">Volver al inicio</button>
+        <button class="btn btn-secondary" id="retry-btn" style="margin-top:8px">Repetir sesión</button>
+    </section>
+
+    <section id="history" class="screen" aria-labelledby="hist-title">
+        <header class="hist-header">
+            <button class="back-btn back-to-home" aria-label="Volver atrás">←</button>
+            <h2 id="hist-title" class="hist-title">Historial</h2>
+            <button id="clear-history-btn" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700">Borrar</button>
+        </header>
+        <div id="hist-list" class="hist-list"></div>
+    </section>
+
+</div><div id="import-overlay" role="dialog" aria-modal="true" aria-labelledby="import-title">
+    <div class="import-sheet">
+        <div class="sheet-handle"></div>
+        <h2 class="import-title" id="import-title">Importar preguntas</h2>
+        <p class="import-sub">Sube un fichero <strong>.json</strong>. Las preguntas existentes se <strong>reemplazarán</strong>.</p>
+        <pre class="import-format" aria-hidden="true">
+[
+ {
+  "id": 1,
+  "pregunta": "¿...?",
+  "opciones": ["A", "B", "C", "D"],
+  "correcta": 0
+ }
 ]
+    </pre>
+        <label class="file-drop">
+            <input type="file" id="file-input" accept=".json" aria-label="Seleccionar archivo JSON">
+            <div class="file-drop-icon">📂</div>
+            <div class="file-drop-text">Toca para seleccionar archivo</div>
+            <div class="file-drop-sub">Formato JSON · hasta 700 preguntas</div>
+        </label>
+        <div class="import-status" id="import-status" aria-live="polite"></div>
+        <button class="btn btn-ghost" id="close-import-btn" style="margin-top:12px">Cancelar</button>
     </div>
-    <label class="file-drop">
-      <input type="file" accept=".json" onchange="handleFileImport(event)">
-      <div class="file-drop-icon">📂</div>
-      <div class="file-drop-text">Toca para seleccionar archivo</div>
-      <div class="file-drop-sub">Formato JSON · hasta 700 preguntas</div>
-    </label>
-    <div class="import-status" id="import-status"></div>
-    <button class="btn btn-ghost" onclick="closeImport()" style="margin-top:12px">Cancelar</button>
-  </div>
 </div>
-<script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-<script src="db.js"></script>
-<script src="preguntas.js"></script>
-<script src="script.js"></script>
+
 </body>
 </html>

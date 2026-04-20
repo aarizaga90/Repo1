@@ -6,6 +6,105 @@
 // ─── CONFIG ───────────────────────────────────────
 const SMART_SESSION_LENGTH = 20;
 
+// ─── CONFIG ───────────────────────────────────────
+// Esperar a que el DOM esté cargado para evitar errores de referencia
+document.addEventListener('DOMContentLoaded', () => {
+
+    // 1. Manejo de los botones de Modo de Estudio
+    const modeButtons = document.querySelectorAll('.mode-btn');
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const mode = this.getAttribute('data-mode');
+            selectMode(this, mode);
+        });
+    });
+
+    // 2. Botón Empezar
+    const startBtn = document.getElementById('start-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            startStudy();
+        });
+    }
+
+    // 3. Botón Historial
+    const historyBtn = document.getElementById('history-btn');
+    if (historyBtn) {
+        historyBtn.addEventListener('click', () => {
+            showScreen('history');
+        });
+    }
+
+    // 4. Botones de "Atrás" (si les pusiste una clase común como .back-btn)
+    const backButtons = document.querySelectorAll('.back-btn');
+    backButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            showScreen('home');
+        });
+    });
+
+    // 1. Botones de "Atrás" (todos los que vuelven a Home)
+    document.querySelectorAll('.back-to-home').forEach(btn => {
+        btn.addEventListener('click', () => showScreen('home'));
+    });
+
+    // 2. Pantalla de Estudio: Botón Siguiente
+    const nextBtn = document.getElementById('next-btn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', nextQuestion);
+    }
+
+    // 3. Pantalla de Resultados: Volver al inicio y refrescar
+    const finishBtn = document.getElementById('finish-btn');
+    if (finishBtn) {
+        finishBtn.addEventListener('click', () => {
+            showScreen('home');
+            if (typeof refreshHome === 'function') refreshHome();
+        });
+    }
+
+    // 4. Pantalla de Resultados: Repetir sesión
+    const retryBtn = document.getElementById('retry-btn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', startStudy);
+    }
+
+    // 1. Abrir el panel de importación
+    const openImportBtn = document.getElementById('open-import-btn');
+    if (openImportBtn) {
+        openImportBtn.addEventListener('click', () => {
+            if (typeof openImport === 'function') openImport();
+        });
+    }
+
+    // 2. Cerrar el panel (botón Cancelar)
+    const closeImportBtn = document.getElementById('close-import-btn');
+    if (closeImportBtn) {
+        closeImportBtn.addEventListener('click', () => {
+            if (typeof closeImport === 'function') closeImport();
+        });
+    }
+
+    // 3. Procesar el archivo seleccionado (el input invisible)
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', (event) => {
+            if (typeof handleFileImport === 'function') handleFileImport(event);
+        });
+    }
+
+    // 4. Cerrar al hacer clic fuera del panel (en el fondo oscuro)
+    const importOverlay = document.getElementById('import-overlay');
+    if (importOverlay) {
+        importOverlay.addEventListener('click', (event) => {
+            // Solo cerramos si se hace clic en el fondo, no en el cuadro blanco
+            if (event.target === importOverlay) {
+                if (typeof closeImport === 'function') closeImport();
+            }
+        });
+    }
+});
+
 // ─── ESTADO EN MEMORIA ────────────────────────────
 // Todo dato persistente vive en Dexie. Aquí solo vive la sesión actual.
 let selectedMode = 'all'; // 'all' | 'shuffle' | 'smart' | 'wrong' | 'unseen'
@@ -44,10 +143,20 @@ async function boot() {
 //  HOME
 // ═══════════════════════════════════════════════
 function selectMode(el, mode) {
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.mode-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-checked', 'false');
+    });
+    
     el.classList.add('selected');
+    el.setAttribute('aria-checked', 'true');
+    
     selectedMode = mode;
-    document.getElementById('range-selector').style.display = mode === 'all' ? 'flex' : 'none';
+
+    const rangeSelector = document.getElementById('range-selector');
+    if (rangeSelector) {
+        rangeSelector.style.display = mode === 'all' ? 'flex' : 'none';
+    }
 }
 
 async function refreshHome() {

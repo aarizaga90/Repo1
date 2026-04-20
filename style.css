@@ -54,6 +54,58 @@ html, body {
 .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
 .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.5s ease; }
 
+/* Reset de botones para que se comporten como contenedores */
+button {
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-align: inherit;
+    display: block;
+    width: 100%; /* Para que ocupen el ancho de su contenedor */
+    -webkit-tap-highlight-color: transparent; /* Elimina el recuadro gris en iOS */
+}
+
+/* Asegurar que el contenido interno del botón no robe el clic */
+button * {
+    pointer-events: none;
+}
+
+/* Esto asegura que el botón capture el clic aunque pulses en el icono o el texto */
+.mode-btn, .btn, .back-btn {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+.mode-btn * {
+    pointer-events: none; /* Los iconos y textos dentro no 'roban' el clic */
+}
+
+/* Reset para evitar que Edge aplique estilos de sistema que rompan el diseño */
+button {
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.next-btn {
+    display: flex;          /* Activa el modo flexible */
+    align-items: center;    /* Centra verticalmente */
+    justify-content: center; /* Centra horizontalmente el texto */
+    text-align: center;      /* Refuerzo para navegadores antiguos */
+
+    width: 100%;            /* O el ancho que desees */
+    padding: 12px;          /* Ajusta según tu diseño */
+
+    /* Asegúrate de resetear estos valores si el navegador los impone */
+    appearance: none;
+    border: none;
+}
+
 .btn {
     display: block; width: 100%; padding: 16px; border-radius: var(--radius);
     font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800;

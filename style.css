@@ -278,5 +278,43 @@ button {
 .option { animation: slideUp 0.2s ease both; }
 .option:nth-child(1) { animation-delay: 0.02s; }
 .option:nth-child(2) { animation-delay: 0.06s; }
-.option:nth-child(3) { animation-delay: 0.10s; }
+.option:nth-child(3) { animation-delay: 0.10ps; }
 .option:nth-child(4) { animation-delay: 0.14s; }
+
+/* admin search */
+/* Contenedor de búsqueda fijo arriba */
+.search-bar {
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    padding: 15px;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Tarjetas de la lista de gestión */
+.q-admin-card {
+    background: var(--surface2);
+    margin: 10px;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.q-admin-header {
+    display: flex;
+    justify-content: space-between;
+    color: var(--accent);
+    font-weight: bold;
+    font-size: 0.8em;
+    margin-bottom: 8px;
+}
+
+.q-admin-text {
+    font-size: 0.95em;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Corta el texto a 2 líneas para que la lista sea corta */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}

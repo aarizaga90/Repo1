@@ -1,83 +1,64 @@
 // ═══════════════════════════════════════════════
-//  STATE
+//  OposTest — PWA
+//  Fuente única de verdad: IndexedDB (Dexie, ver db.js)
 // ═══════════════════════════════════════════════
-let questions = [];
-let session = { queue: [], index: 0, correct: 0, wrong: 0, mode: 'all' };
-let history = {}; // { [id]: { correct: N, wrong: N } }
+
+// ─── CONFIG ───────────────────────────────────────
+const SMART_SESSION_LENGTH = 20;
+
+// ─── ESTADO EN MEMORIA ────────────────────────────
+// Todo dato persistente vive en Dexie. Aquí solo vive la sesión actual.
+let selectedMode = 'all'; // 'all' | 'shuffle' | 'smart' | 'wrong' | 'unseen'
 let answered = false;
 
-const LS_Q = 'opos_questions';
-const LS_H = 'opos_history';
-
-// ═══════════════════════════════════════════════
-//  DB
-// ═══════════════════════════════════════════════
-
-const db = new Dexie("OposDB");
-
-// Definimos las tablas (Preguntas y Estadísticas)
-db.version(1).stores({
-    questions: 'id, pregunta, *opciones, correcta',
-    stats: 'id, vistas, racha, last, weight'
-});
-
-async function initDatabase() {
-    const count = await db.preguntas.count();
-    if (count === 0 && typeof DEFAULT_QUESTIONS !== 'undefined') {
-        console.log("Poblando base de datos con 700 preguntas...");
-        await db.preguntas.bulkAdd(DEFAULT_QUESTIONS);
-    }
-}
+let session = {
+    mode: 'all',
+    queue: [],            // para modos no-smart: array de preguntas completas
+    index: 0,
+    correct: 0,
+    wrong: 0,
+    currentQuestion: null,
+    nextBuffer: null,     // precarga para modo smart
+    lastId: null
+};
 
 // ═══════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════
-function boot() {
-    try {
-        const saved = localStorage.getItem(LS_Q);
-        if (saved) {
-            questions = JSON.parse(saved);
-        }
-        else if (typeof DEFAULT_QUESTIONS !== 'undefined') {
-            questions = DEFAULT_QUESTIONS;
-        }
-        else
-        {
-            questions = [];
-        }
-    } catch (e) {
-        questions = [];
+async function boot() {
+    // Seed inicial: si no hay preguntas en la DB, volcamos DEFAULT_QUESTIONS
+    const pregCount = await db.preguntas.count();
+    if (pregCount === 0 && typeof DEFAULT_QUESTIONS !== 'undefined' && DEFAULT_QUESTIONS.length > 0) {
+        await db.preguntas.bulkPut(DEFAULT_QUESTIONS);
     }
-    try { history = JSON.parse(localStorage.getItem(LS_H)) || {}; } catch (e) { history = {}; }
-    
-    refreshHome();
-    
+
+    await refreshHome();
+
+    // Registro del SW SIEMPRE (no solo en la primera carga)
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(() => {});
     }
 }
 
-function save() {
-    localStorage.setItem(LS_Q, JSON.stringify(questions));
-    localStorage.setItem(LS_H, JSON.stringify(history));
-}
-
 // ═══════════════════════════════════════════════
 //  HOME
 // ═══════════════════════════════════════════════
-let selectedMode = 'all';
-
 function selectMode(el, mode) {
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
     el.classList.add('selected');
     selectedMode = mode;
+    document.getElementById('range-selector').style.display = mode === 'all' ? 'flex' : 'none';
 }
 
-function refreshHome() {
-    const total = questions.length;
-    const done = Object.keys(history).length;
-    const totalCorrect = Object.values(history).reduce((a, h) => a + h.correct, 0);
-    const totalAnswered = Object.values(history).reduce((a, h) => a + h.correct + h.wrong, 0);
+async function refreshHome() {
+    const [total, allStats] = await Promise.all([
+        db.preguntas.count(),
+        db.stats.toArray()
+    ]);
+
+    const done = allStats.length;
+    const totalCorrect = allStats.reduce((s, h) => s + (h.correct || 0), 0);
+    const totalAnswered = allStats.reduce((s, h) => s + (h.correct || 0) + (h.wrong || 0), 0);
     const pct = totalAnswered > 0 ? Math.round(totalCorrect / totalAnswered * 100) : null;
 
     document.getElementById('stat-total').textContent = total;
@@ -85,8 +66,10 @@ function refreshHome() {
     document.getElementById('stat-done').textContent = done;
     document.getElementById('prog-label').textContent = `${done} / ${total}`;
     document.getElementById('prog-fill').style.width = total > 0 ? (done / total * 100) + '%' : '0%';
-    document.getElementById('range-end').value = questions.length;
-    document.getElementById('range-end').max = questions.length;
+
+    const rangeEnd = document.getElementById('range-end');
+    rangeEnd.value = total;
+    rangeEnd.max = total;
 
     const emptyEl = document.getElementById('empty-home');
     const actionsEl = document.getElementById('home-actions');
@@ -100,156 +83,99 @@ function refreshHome() {
 }
 
 // ═══════════════════════════════════════════════
-//  STUDY
+//  STUDY — arranque de sesión
 // ═══════════════════════════════════════════════
+async function startStudy() {
+    const total = await db.preguntas.count();
+    if (total === 0) return;
 
-let nextQuestionBuffer = null; // Aquí guardamos la pregunta precargada
-let currentSession = { mode: '', lastId: null };
+    // Reset de sesión
+    session = {
+        mode: selectedMode,
+        queue: [],
+        index: 0,
+        correct: 0,
+        wrong: 0,
+        currentQuestion: null,
+        nextBuffer: null,
+        lastId: null
+    };
 
-// --- 3. ALGORITMO SMART (Basado en tu C#) ---
-async function getSmartNextQuestion() {
-    // Obtenemos todos los IDs y estadísticas de una vez (pesan poco)
-    const [allIds, allStats] = await Promise.all([
-        db.preguntas.toCollection().primaryKeys(),
-        db.stats.toArray()
-    ]);
-
-    const statsMap = new Map(allStats.map(s => [s.id, s]));
-    const nuevas = allIds.filter(id => !statsMap.has(id));
-
-    // Excluir la que se acaba de ver para no repetir
-    const candidatas = allIds.filter(id => id !== currentSession.lastId);
-
-    let targetId;
-    const azar = Math.random();
-
-    if (nuevas.length > 0 && azar < 0.6) {
-        // 60% prioridad a nuevas
-        targetId = nuevas[Math.floor(Math.random() * nuevas.length)];
-    } else {
-        // 40% prioridad a repaso de falladas o menos vistas
-        // Buscamos la que tenga mayor "peso" (fallos) o racha baja
-        const repaso = allStats
-            .filter(s => s.id !== currentSession.lastId)
-            .sort((a, b) => (b.peso || 1) - (a.peso || 1));
-
-        targetId = repaso.length > 0 ? repaso[0].id : candidatas[Math.floor(Math.random() * candidatas.length)];
-    }
-
-    // TRAEMOS EL CONTENIDO COMPLETO (el A4 de texto) SOLO DE LA ELEGIDA
-    return await db.preguntas.get(targetId);
-}
-
-// --- 4. TÉCNICA DE PRECARGA (Prefetching) ---
-async function prepareNextQuestion() {
-    console.log("Precargando próxima pregunta en segundo plano...");
-    nextQuestionBuffer = await getSmartNextQuestion();
-}
-
-// --- 5. FLUJO DE LA INTERFAZ ---
-async function startSmartStudy() {
-    currentSession.mode = 'smart';
-    // Primera carga: necesitamos una pregunta YA
-    const primera = await getSmartNextQuestion();
-    renderQuestion(primera);
-
-    // Inmediatamente precargamos la que vendrá después
-    prepareNextQuestion();
-    showScreen('study');
-}
-
-async function handleAnswer(isCorrect, qId) {
-    // 1. Guardar estadística en la DB (Asíncrono)
-    const stat = await db.stats.get(qId) || { id: qId, racha: 0, last: 0, peso: 1 };
-
-    stat.last = Date.now();
-    if (isCorrect) {
-        stat.racha++;
-        stat.peso *= 0.5; // Baja la probabilidad de salir
-    } else {
-        stat.racha = 0;
-        stat.peso *= 2.5; // Sube mucho la probabilidad de salir (repaso urgente)
-    }
-    await db.stats.put(stat);
-
-    // 2. Mostrar feedback al usuario (colores verde/rojo)
-    // ... tu código de feedback visual ...
-
-    // 3. Mientras el usuario ve el feedback, nos aseguramos de que el buffer esté listo
-    if (!nextQuestionBuffer) {
-        await prepareNextQuestion();
-    }
-}
-
-function goToNext() {
-    if (nextQuestionBuffer) {
-        const q = nextQuestionBuffer;
-        currentSession.lastId = q.id;
-        renderQuestion(q);
-
-        // Una vez mostrada, liberamos el buffer y precargamos la SIGUIENTE
-        nextQuestionBuffer = null;
-        prepareNextQuestion();
-    }
-}
-
-function buildQueue(mode) {
-    let pool = [...questions];
-    if (mode === 'wrong') {
-        pool = pool.filter(q => history[q.id] && history[q.id].wrong > 0);
-    } else if (mode === 'unseen') {
-        pool = pool.filter(q => !history[q.id]);
-    }
-    if (mode === 'shuffle' || mode === 'wrong' || mode === 'unseen') {
-        pool = pool.sort(() => Math.random() - 0.5);
-    }
-    return pool;
-}
-
-function startStudy() {
-    if (questions.length === 0) return;
-
-    let queue = buildQueue(selectedMode);
-
-    // Si el modo es "Todas" (en orden), aplicamos el rango
-    if (selectedMode === 'all') {
-        const start = parseInt(document.getElementById('range-start').value) - 1;
-        const end = parseInt(document.getElementById('range-end').value);
-        queue = queue.slice(start, end);
-    }
-    
-    if (queue.length === 0) {
-        alert(selectedMode === 'wrong' ? 'No tienes preguntas falladas 🎉' : 'No hay preguntas en esta categoría');
+    if (selectedMode === 'smart') {
+        const first = await getSmartNextQuestion();
+        if (!first) {
+            alert('No hay preguntas disponibles');
+            return;
+        }
+        session.currentQuestion = first;
+        session.lastId = first.id;
+        prepareNextQuestion(); // fire-and-forget
+        startTimer();
+        showScreen('study');
+        renderCurrentQuestion();
         return;
     }
-    
-    session = { queue, index: 0, correct: 0, wrong: 0, mode: selectedMode };
-    
+
+    // Modos no-smart: construimos la cola completa
+    const [allQuestions, allStats] = await Promise.all([
+        db.preguntas.orderBy('id').toArray(),
+        db.stats.toArray()
+    ]);
+    const statsMap = new Map(allStats.map(s => [s.id, s]));
+
+    let pool = allQuestions;
+
+    if (selectedMode === 'wrong') {
+        pool = pool.filter(q => {
+            const s = statsMap.get(q.id);
+            return s && (s.wrong || 0) > 0;
+        });
+    } else if (selectedMode === 'unseen') {
+        pool = pool.filter(q => !statsMap.has(q.id));
+    }
+
+    if (selectedMode === 'shuffle' || selectedMode === 'wrong' || selectedMode === 'unseen') {
+        pool = pool.slice().sort(() => Math.random() - 0.5);
+    } else if (selectedMode === 'all') {
+        const startVal = parseInt(document.getElementById('range-start').value, 10);
+        const endVal = parseInt(document.getElementById('range-end').value, 10);
+        const start = Number.isFinite(startVal) && startVal > 0 ? startVal - 1 : 0;
+        const end = Number.isFinite(endVal) && endVal > 0 ? endVal : pool.length;
+        pool = pool.slice(start, end);
+    }
+
+    if (pool.length === 0) {
+        const msg = selectedMode === 'wrong'  ? 'No tienes preguntas falladas 🎉'
+            : selectedMode === 'unseen' ? 'Ya has visto todas las preguntas'
+                :                             'No hay preguntas en esta selección';
+        alert(msg);
+        return;
+    }
+
+    session.queue = pool;
+    session.currentQuestion = pool[0];
     startTimer();
     showScreen('study');
-    renderQuestion();
+    renderCurrentQuestion();
 }
 
-function renderQuestion() {
-    
-    let q;
-    if (selectedMode === 'smart') {
-        q = getSmartQuestion();
-        // Simulamos que la sesión es infinita o de X preguntas
-        session.currentQuestion = q;
-    } else {
-        q = session.queue[session.index];
-    }
-    
-    const total = session.queue.length;
-    const idx = session.index;
+// ═══════════════════════════════════════════════
+//  STUDY — render
+// ═══════════════════════════════════════════════
+function renderCurrentQuestion() {
+    const q = session.currentQuestion;
+    if (!q) return;
+
     answered = false;
+    const idx = session.index;
+    const isSmart = session.mode === 'smart';
+    const total = isSmart ? SMART_SESSION_LENGTH : session.queue.length;
 
     document.getElementById('q-num').textContent = `Pregunta ${idx + 1} de ${total}`;
     document.getElementById('q-text').textContent = q.pregunta;
     document.getElementById('prog-current').textContent = `Pregunta ${idx + 1}`;
     document.getElementById('prog-of').textContent = `de ${total}`;
-    document.getElementById('study-fill').style.width = ((idx) / total * 100) + '%';
+    document.getElementById('study-fill').style.width = (idx / total * 100) + '%';
     document.getElementById('answer-footer').style.display = 'none';
     document.getElementById('question-scroll').scrollTop = 0;
 
@@ -259,38 +185,72 @@ function renderQuestion() {
     q.opciones.forEach((opt, i) => {
         const btn = document.createElement('button');
         btn.className = 'option';
-        btn.innerHTML = `<span class="option-letter">${letters[i]}</span><span class="option-text">${opt}</span>`;
+        btn.innerHTML =
+            `<span class="option-letter">${letters[i]}</span>` +
+            `<span class="option-text"></span>`;
+        btn.querySelector('.option-text').textContent = opt; // evita XSS en opciones
         btn.onclick = () => selectAnswer(i);
         list.appendChild(btn);
     });
 }
 
-function selectAnswer(chosen) {
+async function selectAnswer(chosen) {
     if (answered) return;
     answered = true;
-    const q = session.queue[session.index];
+
+    const q = session.currentQuestion;
     const correct = q.correcta;
     const opts = document.querySelectorAll('.option');
-
     opts.forEach(o => { o.classList.add('disabled'); o.onclick = null; });
 
-    if (chosen === correct) {
+    const isCorrect = chosen === correct;
+    if (isCorrect) {
         opts[chosen].classList.add('selected-correct');
         session.correct++;
-        showFeedback(true);
-        recordHistory(q.id, true);
     } else {
         opts[chosen].classList.add('selected-wrong');
-        opts[correct].classList.add('show-correct');
+        if (opts[correct]) opts[correct].classList.add('show-correct');
         session.wrong++;
-        showFeedback(false);
-        recordHistory(q.id, false);
     }
 
-    const footer = document.getElementById('answer-footer');
-    footer.style.display = 'block';
-    const isLast = session.index >= session.queue.length - 1;
+    showFeedback(isCorrect);
+
+    // Persistir la respuesta (estadística)
+    await recordAnswer(q.id, isCorrect);
+
+    // Mostrar footer con botón Siguiente / Ver resultados
+    document.getElementById('answer-footer').style.display = 'block';
+    const isLast = session.mode === 'smart'
+        ? session.index + 1 >= SMART_SESSION_LENGTH
+        : session.index >= session.queue.length - 1;
     document.getElementById('next-btn').textContent = isLast ? 'Ver resultados ✓' : 'Siguiente →';
+}
+
+async function nextQuestion() {
+    if (session.mode === 'smart') {
+        session.index++;
+        if (session.index >= SMART_SESSION_LENGTH) {
+            showResults();
+            return;
+        }
+        // Usamos el buffer precargado; si no está listo, cargamos en el momento
+        let q = session.nextBuffer;
+        session.nextBuffer = null;
+        if (!q) q = await getSmartNextQuestion();
+        if (!q) { showResults(); return; }
+        session.currentQuestion = q;
+        session.lastId = q.id;
+        prepareNextQuestion(); // precarga la siguiente
+        renderCurrentQuestion();
+    } else {
+        session.index++;
+        if (session.index >= session.queue.length) {
+            showResults();
+            return;
+        }
+        session.currentQuestion = session.queue[session.index];
+        renderCurrentQuestion();
+    }
 }
 
 function showFeedback(correct) {
@@ -299,116 +259,85 @@ function showFeedback(correct) {
     el.textContent = correct ? '✓ ¡Correcto!' : '✗ Incorrecto';
 }
 
-function nextQuestion() {
-    session.index++;
-    if (session.index >= session.queue.length) {
-        showResults();
+// ═══════════════════════════════════════════════
+//  SMART — selector de próxima pregunta
+//  60% prioridad a nuevas, 40% repaso ordenado por peso
+// ═══════════════════════════════════════════════
+async function getSmartNextQuestion() {
+    const [allIds, allStats] = await Promise.all([
+        db.preguntas.toCollection().primaryKeys(),
+        db.stats.toArray()
+    ]);
+    if (allIds.length === 0) return null;
+
+    const statsMap = new Map(allStats.map(s => [s.id, s]));
+    const nuevas = allIds.filter(id => !statsMap.has(id) && id !== session.lastId);
+
+    let targetId;
+    const azar = Math.random();
+
+    if (nuevas.length > 0 && azar < 0.6) {
+        targetId = nuevas[Math.floor(Math.random() * nuevas.length)];
     } else {
-        renderQuestion();
+        const repaso = allStats
+            .filter(s => s.id !== session.lastId)
+            .sort((a, b) => (b.peso || 1) - (a.peso || 1));
+
+        if (repaso.length > 0) {
+            targetId = repaso[0].id;
+        } else {
+            const candidatas = allIds.filter(id => id !== session.lastId);
+            targetId = candidatas.length > 0
+                ? candidatas[Math.floor(Math.random() * candidatas.length)]
+                : allIds[0];
+        }
+    }
+
+    return await db.preguntas.get(targetId);
+}
+
+// Precarga en segundo plano — llena session.nextBuffer sin bloquear
+async function prepareNextQuestion() {
+    try {
+        session.nextBuffer = await getSmartNextQuestion();
+    } catch (e) {
+        session.nextBuffer = null;
     }
 }
 
-function recordHistory(id, isCorrect) {
-    if (!history[id]) history[id] = { c: 0, w: 0, r: 0, t: 0 };
+// ═══════════════════════════════════════════════
+//  RESPUESTA — único punto de persistencia de stats
+// ═══════════════════════════════════════════════
+async function recordAnswer(qId, isCorrect) {
+    const existing = await db.stats.get(qId);
+    const stat = existing || { id: qId, correct: 0, wrong: 0, racha: 0, peso: 1, last: 0 };
 
-    history[id].t = Date.now(); // Ultima vez vista
-    if (isCorrect) {
-        history[id].c++; // Total correctas
-        history[id].r++; // Racha actual
-    } else {
-        history[id].w++; // Total fallos
-        history[id].r = 0; // Reset racha
-    }
-    save();
-}
-
-// Función para guardar una respuesta con lógica "Smart"
-async function recordSmartAnswer(qId, isCorrect) {
-    const stat = await db.stats.get(qId) || { id: qId, vistas: 0, racha: 0, last: 0, weight: 1.0 };
-
-    stat.vistas++;
     stat.last = Date.now();
-
     if (isCorrect) {
-        stat.racha++;
-        // Si acierta, bajamos la prioridad (peso)
-        stat.weight *= 0.8;
+        stat.correct = (stat.correct || 0) + 1;
+        stat.racha = (stat.racha || 0) + 1;
+        // Acierto: baja la prioridad de repaso (pero no a cero)
+        stat.peso = Math.max(0.1, (stat.peso || 1) * 0.5);
     } else {
+        stat.wrong = (stat.wrong || 0) + 1;
         stat.racha = 0;
-        // Si falla, subimos la prioridad mucho
-        stat.weight *= 2.0;
+        // Fallo: sube la prioridad (con tope para no desbordar)
+        stat.peso = Math.min(20, (stat.peso || 1) * 2.5);
     }
 
     await db.stats.put(stat);
 }
 
-async function getSmartNextId() {
-    const allStats = await db.stats.toArray();
-    const idsVistos = allStats.map(s => s.id);
-
-    // 1. IDs que nunca has visto
-    const todasLasPreguntas = await db.preguntas.toCollection().primaryKeys();
-    const nuevas = todasLasPreguntas.filter(id => !idsVistos.includes(id));
-
-    // 2. Cascada de selección (Lógica C#)
-    let idElegido;
-    const azar = Math.random();
-
-    if (nuevas.length > 0 && azar < 0.7) {
-        // Prioridad 70% a las nuevas (por el gran volumen de texto)
-        idElegido = nuevas[Math.floor(Math.random() * nuevas.length)];
-    } else {
-        // Prioridad a falladas (peso alto) o repaso
-        const repaso = allStats.sort((a, b) => b.peso - a.peso);
-        idElegido = repaso.length > 0 ? repaso[0].id : todasLasPreguntas[0];
-    }
-
-    // 3. Traer SOLO la pregunta elegida (ahorra memoria)
-    return await db.preguntas.get(idElegido);
-}
-
-function getSmartQuestion() {
-    const now = Date.now();
-    // Filtramos para no repetir la última (distancia mínima)
-    let pool = questions.filter(q => q.id !== session.lastId);
-
-    // 1. Población: NUNCA VISTAS
-    const nuevas = pool.filter(q => !history[q.id]);
-
-    // 2. Población: REPASO URGENTE (Falladas o con racha baja)
-    const repaso = pool.filter(q => history[q.id] && history[q.id].r < 3);
-
-    // 3. Población: DOMINADAS (Racha de 3 o más)
-    const dominadas = pool.filter(q => history[q.id] && history[q.id].r >= 3);
-
-    let seleccionada;
-    const azar = Math.random();
-
-    // Simulamos la "Cuota de nuevas" del algoritmo de C#
-    if (nuevas.length > 0 && azar < 0.6) {
-        // 60% probabilidad de priorizar nuevas hasta que se acaben
-        seleccionada = nuevas[Math.floor(Math.random() * nuevas.length)];
-    } else if (repaso.length > 0) {
-        // Si no toca nueva, vamos a por las falladas/pendientes
-        seleccionada = repaso[Math.floor(Math.random() * repaso.length)];
-    } else {
-        // Si todo está dominado, sacamos de la bolsa de dominadas
-        seleccionada = dominadas[Math.floor(Math.random() * dominadas.length)] || pool[0];
-    }
-
-    session.lastId = seleccionada.id;
-    return seleccionada;
-}
-
 // ═══════════════════════════════════════════════
 //  CRONÓMETRO
 // ═══════════════════════════════════════════════
-let timerInterval;
+let timerInterval = null;
 let secondsElapsed = 0;
 
 function startTimer() {
-    stopTimer(); // Limpiamos por si acaso
+    stopTimer();
     secondsElapsed = 0;
+    updateTimerDisplay();
     timerInterval = setInterval(() => {
         secondsElapsed++;
         updateTimerDisplay();
@@ -416,14 +345,16 @@ function startTimer() {
 }
 
 function stopTimer() {
-    clearInterval(timerInterval);
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
 }
 
 function updateTimerDisplay() {
     const mins = Math.floor(secondsElapsed / 60);
     const secs = secondsElapsed % 60;
     const display = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    // Asegúrate de añadir un id="timer" en tu HTML
     const el = document.getElementById('timer');
     if (el) el.textContent = display;
 }
@@ -432,16 +363,14 @@ function updateTimerDisplay() {
 //  RESULTS
 // ═══════════════════════════════════════════════
 function showResults() {
-    
     stopTimer();
-    
     const total = session.correct + session.wrong;
     const pct = total > 0 ? Math.round(session.correct / total * 100) : 0;
     let emoji = '😐', title = 'Sesión completada';
-    if (pct >= 90) { emoji = '🏆'; title = '¡Sobresaliente!'; }
+    if (pct >= 90)      { emoji = '🏆'; title = '¡Sobresaliente!'; }
     else if (pct >= 70) { emoji = '🎯'; title = '¡Muy bien!'; }
     else if (pct >= 50) { emoji = '📚'; title = 'Sigue practicando'; }
-    else { emoji = '💪'; title = 'Hay que repasar'; }
+    else                { emoji = '💪'; title = 'Hay que repasar'; }
 
     document.getElementById('res-emoji').textContent = emoji;
     document.getElementById('res-title').textContent = title;
@@ -453,34 +382,54 @@ function showResults() {
 }
 
 // ═══════════════════════════════════════════════
-//  HISTORY SCREEN
+//  HISTORY
 // ═══════════════════════════════════════════════
-function renderHistory() {
+async function renderHistory() {
     const list = document.getElementById('hist-list');
-    const answered = questions.filter(q => history[q.id]);
-    if (answered.length === 0) {
-        list.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">Sin historial</div><div class="empty-sub">Las preguntas respondidas aparecerán aquí</div></div>';
+    const [allQuestions, allStats] = await Promise.all([
+        db.preguntas.orderBy('id').toArray(),
+        db.stats.toArray()
+    ]);
+    const statsMap = new Map(allStats.map(s => [s.id, s]));
+    const answeredQs = allQuestions.filter(q => statsMap.has(q.id));
+
+    if (answeredQs.length === 0) {
+        list.innerHTML =
+            '<div class="empty-state">' +
+            '<div class="empty-icon">📊</div>' +
+            '<div class="empty-title">Sin historial</div>' +
+            '<div class="empty-sub">Las preguntas respondidas aparecerán aquí</div>' +
+            '</div>';
         return;
     }
-    list.innerHTML = answered.map(q => {
-        const h = history[q.id];
+
+    list.innerHTML = answeredQs.map(q => {
+        const s = statsMap.get(q.id);
         return `<div class="hist-item">
-      <span class="hist-num">#${q.id}</span>
-      <span class="hist-q">${q.pregunta}</span>
-      <div class="hist-badges">
-        <span class="badge c">✓ ${h.correct}</span>
-        <span class="badge w">✗ ${h.wrong}</span>
-      </div>
-    </div>`;
+            <span class="hist-num">#${q.id}</span>
+            <span class="hist-q">${escapeHtml(q.pregunta)}</span>
+            <div class="hist-badges">
+                <span class="badge c">✓ ${s.correct || 0}</span>
+                <span class="badge w">✗ ${s.wrong || 0}</span>
+            </div>
+        </div>`;
     }).join('');
 }
 
-function clearHistory() {
-    if (!confirm('¿Borrar todo el historial?')) return;
-    history = {};
-    save();
-    renderHistory();
-    refreshHome();
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function clearHistory() {
+    if (!confirm('¿Borrar todo el historial de respuestas? (Las preguntas se conservan)')) return;
+    await db.stats.clear();
+    await renderHistory();
+    await refreshHome();
 }
 
 // ═══════════════════════════════════════════════
@@ -488,57 +437,54 @@ function clearHistory() {
 // ═══════════════════════════════════════════════
 function openImport() {
     document.getElementById('import-overlay').classList.add('open');
-    document.getElementById('import-status').className = 'import-status';
-    document.getElementById('import-status').textContent = '';
+    const st = document.getElementById('import-status');
+    st.className = 'import-status';
+    st.textContent = '';
 }
+
 function closeImport() {
     document.getElementById('import-overlay').classList.remove('open');
 }
+
 function closeImportOutside(e) {
     if (e.target === document.getElementById('import-overlay')) closeImport();
 }
 
-function handleFileImport(e) {
+async function handleFileImport(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-        try {
-            const data = JSON.parse(ev.target.result);
-            if (!Array.isArray(data) || data.length === 0) throw new Error('Array vacío');
-            // Validate first item
-            const sample = data[0];
-            if (!sample.pregunta || !Array.isArray(sample.opciones) || sample.opciones.length < 2) {
-                throw new Error('Formato incorrecto');
-            }
-            // Ensure correcta field exists
-            data.forEach((q, i) => {
-                if (q.id === undefined) q.id = i + 1;
-                if (q.correcta === undefined) q.correcta = 0;
-            });
-            questions = data;
-            save();
-            refreshHome();
-            showStatus(`✓ ${data.length} preguntas importadas correctamente`, true);
-            setTimeout(closeImport, 1800);
-        } catch (err) {
-            showStatus('✗ Error al leer el fichero: ' + err.message, false);
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        if (!Array.isArray(data) || data.length === 0) throw new Error('Array vacío');
+        const sample = data[0];
+        if (!sample.pregunta || !Array.isArray(sample.opciones) || sample.opciones.length < 2) {
+            throw new Error('Formato incorrecto');
         }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+        data.forEach((q, i) => {
+            if (q.id === undefined) q.id = i + 1;
+            if (q.correcta === undefined) q.correcta = 0;
+        });
+
+        // Reemplazo completo (coherente con el texto del overlay de importar)
+        await db.preguntas.clear();
+        await db.preguntas.bulkPut(data);
+
+        await refreshHome();
+        showStatus(`✓ ${data.length} preguntas importadas correctamente`, true);
+        setTimeout(closeImport, 1800);
+    } catch (err) {
+        showStatus('✗ Error al leer el fichero: ' + err.message, false);
+    } finally {
+        e.target.value = '';
+    }
 }
 
 function showStatus(msg, ok) {
     const el = document.getElementById('import-status');
     el.textContent = msg;
     el.className = 'import-status ' + (ok ? 'ok' : 'err');
-}
-
-//guardar import en DB
-async function importarPreguntas(jsonArray) {
-    await db.preguntas.bulkPut(jsonArray);
-    console.log("700 preguntas guardadas en la DB del iPhone");
 }
 
 // ═══════════════════════════════════════════════
@@ -549,9 +495,10 @@ function showScreen(id) {
     document.getElementById(id).classList.add('active');
     if (id === 'history') renderHistory();
     if (id === 'home') refreshHome();
+    if (id !== 'study') stopTimer(); // si salimos del estudio, paramos el timer
 }
 
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
-    boot();
+boot();

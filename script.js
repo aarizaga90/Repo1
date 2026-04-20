@@ -13,9 +13,25 @@ const LS_H = 'opos_history';
 //  BOOT
 // ═══════════════════════════════════════════════
 function boot() {
-    try { questions = JSON.parse(localStorage.getItem(LS_Q)) || []; } catch { questions = []; }
+    try {
+        const saved = localStorage.getItem(LS_Q);
+        if (saved) {
+            questions = JSON.parse(saved);
+        }
+        else if (typeof DEFAULT_QUESTIONS !== 'undefined') {
+            questions = DEFAULT_QUESTIONS;
+        }
+        else
+        {
+            questions = [];
+        }
+    } catch {
+        questions = [];
+    }
     try { history = JSON.parse(localStorage.getItem(LS_H)) || {}; } catch { history = {}; }
+    
     refreshHome();
+    
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(() => {});
     }
@@ -282,4 +298,6 @@ function showScreen(id) {
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
-boot();
+window.addEventListener('DOMContentLoaded', () => {
+    boot();
+});

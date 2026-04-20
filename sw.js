@@ -1,5 +1,5 @@
 const CACHE_NAME = 'opos-v1';
-const ASSETS = ['./', './index.html', './manifest.json'];
+const ASSETS = ['./', './index.html', './manifest.json','./script.js','./style.css'];
 
 self.addEventListener('install', e => {
   e.waitUntil(

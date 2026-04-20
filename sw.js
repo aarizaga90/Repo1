@@ -6,7 +6,9 @@ const ASSETS = [
     './style.css',
     './db.js',
     './preguntas.js',
-    './script.js'
+    './script.js',
+    './admin.js',
+    './dexie.js'
 ];
 
 self.addEventListener('install', e => {

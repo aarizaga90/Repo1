@@ -5,22 +5,34 @@ let allQuestions = []; // Aquí guardaremos el resultado del filtro
 async function initAdminList() {
     // 1. Limpiar contenedor y mostrar skeletons
     const container = document.getElementById('questions-list-container');
+    if(!container) return;
+
     container.innerHTML = '<div class="skeleton"></div>'.repeat(5);
     
     // 2. Obtener datos de Dexie (solo IDs y texto para ir rápido)
+    try
+    {
+        if (!db.isOpen()) await db.Open();
+
     allQuestions = await db.preguntas.toArray();
     
     // 3. Renderizar los primeros 20
     container.innerHTML = '';
+    currentOffset = 0;
     renderMoreQuestions();
     
     // 4. Configurar el observador del final de página
-    setupInfiniteScroll();
+    if(!document.getElementById('sentinel'))
+    {setupInfiniteScroll();}
+} catch (err) {
+    console.error("Error en admin:", err);
+    container.innerHTML = '<p style="color:white">Error al cargar datos.</p>';
+}
 }
 
 function renderMoreQuestions() {
-    const container = document.getElementById('questions-list-container');
     const fragment = document.createDocumentFragment();
+    const container = document.getElementById('questions-list-container');
     
     const nextBatch = allQuestions.slice(currentOffset, currentOffset + limit);
     
@@ -32,10 +44,9 @@ function renderMoreQuestions() {
             <div class="q-admin-text">${q.pregunta}</div>
             <button class="btn-edit" onclick="abrirEdicionCompleta(${q.id})">Editar Todo</button>
         `;
-        fragment.appendChild(div);
+        container.appendChild(div);
     });
-    
-    container.appendChild(fragment);
+
     currentOffset += limit;
 }
 

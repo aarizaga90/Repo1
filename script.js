@@ -103,6 +103,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    //boton gestion preguntas
+    const adminBtn = document.getElementById('admin-btn');
+if (adminBtn) {
+    adminBtn.addEventListener('click', () => {
+        showScreen('admin-list'); // Cambia a la pantalla de lista
+        if (typeof initAdminList === 'function') {
+            initAdminList(); // Carga las 700 preguntas con scroll infinito
+        }
+    });
+}
+
 });
 
 // ─── ESTADO EN MEMORIA ────────────────────────────

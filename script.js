@@ -10,14 +10,26 @@ const SMART_SESSION_LENGTH = 20;
 // Esperar a que el DOM esté cargado para evitar errores de referencia
 document.addEventListener('DOMContentLoaded', () => {
 
-    // 1. Manejo de los botones de Modo de Estudio
-    const modeButtons = document.querySelectorAll('.mode-btn');
-    modeButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const mode = this.getAttribute('data-mode');
-            selectMode(this, mode);
+// 1. Configuración de eventos al cargar el DOM
+        const container = document.getElementById('home-actions');
+        if (!container) return;
+
+        container.addEventListener('click', (e) => {
+            // Buscamos si el clic fue en un botón de modo o dentro de uno
+            const btn = e.target.closest('.mode-btn');
+            if (!btn) return;
+
+            const mode = btn.dataset.mode;
+            const target = btn.dataset.target;
+
+            if (mode && target) {
+                selectModeSecure(btn, mode, target);
+            }
         });
-    });
+
+        // Opcional: Activar el primero por defecto de forma segura
+        const defaultBtn = document.querySelector('.mode-btn[data-mode="all"]');
+        if (defaultBtn) selectModeSecure(defaultBtn, 'all', 'top');
 
     // 2. Botón Empezar
     const startBtn = document.getElementById('start-btn');
@@ -118,7 +130,7 @@ if (adminBtn) {
 });
 
 // ─── ESTADO EN MEMORIA ────────────────────────────
-// Todo dato persistente vive en Dexie. Aquí solo vive la sesión actual.
+// Los datos persistentes viven en Dexie. Aquí solo vive la sesión actual.
 let selectedMode = 'all'; // 'all' | 'shuffle' | 'smart' | 'wrong' | 'unseen'
 let answered = false;
 
@@ -154,20 +166,51 @@ async function boot() {
 // ═══════════════════════════════════════════════
 //  HOME
 // ═══════════════════════════════════════════════
-function selectMode(el, mode) {
-    document.querySelectorAll('.mode-btn').forEach(b => {
-        b.classList.remove('selected');
-        b.setAttribute('aria-checked', 'false');
-    });
-    
-    el.classList.add('selected');
-    el.setAttribute('aria-checked', 'true');
-    
-    selectedMode = mode;
+async function selectModeSecure(el, mode, target) {
+    if (!mode) return;
 
-    const rangeSelector = document.getElementById('range-selector');
-    if (rangeSelector) {
-        rangeSelector.style.display = mode === 'all' ? 'flex' : 'none';
+    // 1. Clases en botones
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    window.selectedMode = mode;
+
+    // 2. Identificar paneles
+    const pTop = document.getElementById('settings-top');
+    const pBottom = document.getElementById('settings-bottom');
+    const activePanel = (target === 'top') ? pTop : pBottom;
+    const inactivePanel = (target === 'top') ? pBottom : pTop;
+
+    // 3. Cerrar el panel que no estamos usando
+    if (inactivePanel) inactivePanel.classList.remove('active');
+
+    // 4. Datos del banco (total de preguntas)
+    const totalPregs = (typeof db !== 'undefined') ? await db.preguntas.count() : 200;
+
+    const configs = {
+        'all': { desc: "Estudio secuencial.", html: `Desde: <input type="number" id="range-start" value="1"> Hasta: <input type="number" id="range-end" value="${totalPregs}">` },
+        'smart': { desc: "Prioridad a fallos y nuevas.", html: `Nº preguntas: <input type="number" id="smart-limit" value="20">` },
+        'shuffle': { desc: "Se mezclarán todas las preguntas disponibles.", html: `<span style="font-size:12px; color:var(--muted)">Sin ajustes adicionales.</span>` },
+        'wrong': { desc: "Repasa solo tus fallos.", html: `<span style="font-size:12px; color:var(--muted)">Se cargarán tus errores guardados.</span>` },
+        'unseen': { desc: "Preguntas nunca respondidas.", html: `<span style="font-size:12px; color:var(--muted)">Ideal para completar el banco.</span>` }
+    };
+
+    const config = configs[mode];
+
+    if (activePanel && config) {
+        // Inyectamos el contenido primero (invisible porque max-height es 0)
+        activePanel.innerHTML = `
+            <div class="panel-content" style="border-left: 3px solid var(--accent); padding-left: 12px;">
+                <p style="margin:0 0 8px 0; font-size:12px; color:var(--muted); line-height:1.4;">${config.desc}</p>
+                <div class="panel-controls" style="display:flex; align-items:center; gap:5px; color:var(--accent); font-weight:bold; font-size:14px;">
+                    ${config.html}
+                </div>
+            </div>
+        `;
+
+        // Pequeño truco para que el navegador detecte el cambio y anime
+        requestAnimationFrame(() => {
+            activePanel.classList.add('active');
+        });
     }
 }
 

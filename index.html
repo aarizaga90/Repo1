@@ -10,7 +10,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="OposTest">
-    <meta name="theme-color" content="#f5a623"> 
+    <meta name="theme-color" content="#f5a623">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 
     <title>OposTest - Prepara tu oposición</title>
     <meta name="description" content="OposTest - Plataforma para preparar oposiciones con preguntas y estadísticas detalladas.">
@@ -63,60 +64,38 @@
         </div>
 
         <div id="home-actions">
-            <h2 class="home-section-title">Modo de estudio</h2>
-
-            <div class="mode-row" role="radiogroup" aria-label="Selección de modo de estudio">
-                <button type="button" class="mode-btn selected" data-mode="all" aria-checked="true" role="radio">
-                    <span class="mode-icon">📚</span>
-                    <div class="mode-label">Todas</div>
-                    <div class="mode-sub">En orden</div>
+            <div class="main-modes-grid">
+                <button type="button" class="mode-btn big" data-mode="all" data-target="top">
+                    <span class="mode-icon">📚</span> En Orden
                 </button>
-
-                <fieldset id="range-selector" class="range-config" style="border:none; padding:0; margin-bottom:15px;">
-                    <legend class="sr-only" style="display:none">Rango de preguntas</legend>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <label for="range-start" style="font-size: 12px; color: var(--muted);">Desde:</label>
-                        <input type="number" id="range-start" value="1" min="1" style="width: 60px; background: var(--surface2); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 5px;">
-                        <label for="range-end" style="font-size: 12px; color: var(--muted);">Hasta:</label>
-                        <input type="number" id="range-end" value="100" style="width: 60px; background: var(--surface2); border: 1px solid var(--border); color: white; border-radius: 8px; padding: 5px;">
-                    </div>
-                </fieldset>
-
-                <button type="button" class="mode-btn" data-mode="shuffle" aria-checked="false" role="radio">
-                    <span class="mode-icon">🔀</span>
-                    <div class="mode-label">Aleatorio</div>
-                    <div class="mode-sub">Orden mixto</div>
-                </button>
-
-                <button type="button" class="mode-btn" data-mode="smart" aria-checked="false" role="radio">
-                    <span class="mode-icon">🧠</span>
-                    <div class="mode-label">Inteligente</div>
-                    <div class="mode-sub">Mejor opción</div>
-                </button>
-
-                <button class="mode-btn" data-mode="wrong" aria-checked="false" role="radio">
-                    <span class="mode-icon" aria-hidden="true">❌</span>
-                    <div class="mode-label">Falladas</div>
-                    <div class="mode-sub">Solo errores</div>
-                </button>
-
-                <button class="mode-btn" data-mode="unseen" aria-checked="false" role="radio">
-                    <span class="mode-icon" aria-hidden="true">🆕</span>
-                    <div class="mode-label">Sin ver</div>
-                    <div class="mode-sub">No respondidas</div>
+                <button type="button" class="mode-btn big" data-mode="smart" data-target="top">
+                    <span class="mode-icon">🧠</span> Inteligente
                 </button>
             </div>
 
-            <button type="button" id="start-btn" class="btn btn-primary" style="margin-top: 20px;">
-                ▶ Empezar sesión
-            </button>
-            <button type="button" id="history-btn" class="btn btn-secondary">📊 Historial de respuestas</button>
-            <button type="button" id="admin-btn" class="btn btn-secondary" style="margin-top: 8px;">
-    ⚙️ Gestionar preguntas
-</button>
+            <div id="settings-top" class="settings-panel"></div>
 
+            <details class="extra-modes-details">
+                <summary>Más opciones de sesión ▼</summary>
+                <div class="extra-modes-grid">
+                    <button type="button" class="mode-btn sm" data-mode="shuffle" data-target="bottom">
+                        <span class="mode-icon">🔀</span> Aleatorio
+                    </button>
+                    <button type="button" class="mode-btn sm" data-mode="wrong" data-target="bottom">
+                        <span class="mode-icon">❌</span> Falladas
+                    </button>
+                    <button type="button" class="mode-btn sm" data-mode="unseen" data-target="bottom">
+                        <span class="mode-icon">🆕</span> Sin ver
+                    </button>
+                </div>
+                <div id="settings-bottom" class="settings-panel"></div>
+            </details>
         </div>
 
+            <button type="button" id="start-btn" class="btn btn-primary btn-start-session">▶ Empezar sesión</button>
+            <button type="button" id="history-btn" class="btn btn-secondary">📊 Historial de respuestas</button>
+            <button type="button" id="admin-btn" class="btn btn-secondary" style="margin-top: 8px;">⚙️ Gestionar preguntas</button>
+        
         <button class="btn btn-ghost" id="open-import-btn">⬆ Importar banco de preguntas (JSON)</button>
     </main>
 

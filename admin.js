@@ -6,6 +6,7 @@ let filteredQuestions = []; // Nueva variable para manejar los filtros
 // Esta función se llama al pulsar el botón de gestión
 async function initAdminList() {
     const container = document.getElementById('questions-list-container');
+    const countEl = document.getElementById('search-count');
     const searchInput = document.getElementById('search-input');
     
     if (!container) return;
@@ -22,28 +23,45 @@ async function initAdminList() {
         filteredQuestions = [...allQuestions]; // Al principio, el filtro son todas
         
         // 3. Resetear scroll y pintar
-        const countEl = document.getElementById('search-count');
-        if(countEl) countEl.textContent = '${allQuestions.lenght} preguntas';
+        countEl.textContent = '${allQuestions.lenght} preguntas';
 
         container.innerHTML = '';
         currentOffset = 0;
 
-container.onclick = (e) => {
-    if (e.target.clasList.contains('btn-edit')) {
-        const id = parseInt(e.target.dataset.id);
-        abrirEditorCompleto(id);
-    }
-};
+        // Escuchador de clics (Delegación)
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-edit');
+            if (btn) {
+                const id = parseInt(btn.dataset.id);
+                abrirEditorCompleto(id);
+            }
+        });
 
         renderMoreQuestions();
-        
-        // 4. Activar el buscador (si no estaba ya activado)
         setupSearchListener();
+        setupScrollTop();
         
     } catch (err) {
         console.error("Error en admin:", err);
         container.innerHTML = `<p style="color:white">Error al cargar datos.</p>`;
     }
+}
+
+//saca el botón de navegación al top
+function setupScrollTop() {
+    let btn = document.getElementById('scroll-top-btn');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'scroll-top-btn';
+        btn.innerHTML = '↑';
+        document.body.appendChild(btn);
+        btn.onclick = () => window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    window.onscroll = () => {
+        if (window.scrollY > 500) btn.style.display = 'block';
+        else btn.style.display = 'none';
+    };
 }
 
 // Escucha el teclado en tiempo real

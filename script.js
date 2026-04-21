@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════
 
 // ─── CONFIG ───────────────────────────────────────
-const SMART_SESSION_LENGTH = 20;
+let SMART_SESSION_LENGTH = 20;
 
 // ─── CONFIG ───────────────────────────────────────
 // Esperar a que el DOM esté cargado para evitar errores de referencia

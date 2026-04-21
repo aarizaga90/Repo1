@@ -23,7 +23,7 @@ async function initAdminList() {
         filteredQuestions = [...allQuestions]; // Al principio, el filtro son todas
         
         // 3. Resetear scroll y pintar
-        countEl.textContent = '${allQuestions.lenght} preguntas';
+        countEl.textContent = `${allQuestions.length} preguntas`;
 
         container.innerHTML = '';
         currentOffset = 0;

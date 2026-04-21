@@ -15,6 +15,11 @@
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+@keyframes shine {
+    to { background-position-x: -200%; }
+}
+
 html, body {
     touch-action: pan-x pan-y; /* Permite scroll pero bloquea zoom gestual */
     overflow-x: hidden; /* Evita desplazamientos laterales raros */
@@ -23,16 +28,27 @@ html, body {
 input, textarea, select {
     font-size: 16px !important; /* iOS no hará zoom al enfocar el buscador */
 }
+button:focus-visible,
+.mode-btn:focus-visible,
+.option:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
-    height: 100%; background: var(--bg); color: var(--text);
-    font-family: 'Nunito', sans-serif; overflow: hidden;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    overflow: hidden;
     -webkit-tap-highlight-color: transparent;
 }
 #app {
-    height: 100%; display: flex; flex-direction: column;
-    padding-top: var(--safe-top); padding-bottom: var(--safe-bottom);
+    height: 100%; display: flex;
+    flex-direction: column;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
 }
 
 /* ── BOTONES MODALES ── */
@@ -72,7 +88,7 @@ html, body {
 
 /* Estado activo: se expande */
 .settings-panel.active {
-    max-height: 120px; /* Suficiente para el texto y el input */
+    max-height: 500px; /* Suficiente para el texto y el input */
     opacity: 1;
     margin: 10px 0 15px 0;
     padding: 12px 15px; /* Recuperamos el padding al abrir */
@@ -87,7 +103,7 @@ html, body {
 /* Estilo para los inputs de rango dentro del panel */
 .panel-controls input {
     width: 60px;
-    background: #000;
+    background: var(--bg);
     border: 1px solid var(--border);
     color: white;
     padding: 4px;
@@ -134,7 +150,11 @@ html, body {
 }
 
 /* ── SCREENS ── */
-.screen { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+.screen { 
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto; }
 .screen.active { display: flex; }
 
 /* ── HOME ── */
@@ -174,6 +194,8 @@ button {
     text-align: inherit;
     display: block;
     width: 100%; /* Para que ocupen el ancho de su contenedor */
+    outline: none;
+    -webkit-appearance: none;
     -webkit-tap-highlight-color: transparent; /* Elimina el recuadro gris en iOS */
 }
 
@@ -205,12 +227,6 @@ button * {
     pointer-events: none; /* Los iconos y textos dentro no 'roban' el clic */
 }
 
-/* Reset para evitar que Edge aplique estilos de sistema que rompan el diseño */
-button {
-    outline: none;
-    -webkit-appearance: none;
-}
-
 .next-btn {
     display: flex;          /* Activa el modo flexible */
     align-items: center;    /* Centra verticalmente */
@@ -223,7 +239,16 @@ button {
     /* Asegúrate de resetear estos valores si el navegador los impone */
     appearance: none;
     border: none;
+    border-radius: var(--radius);
+    background: var(--accent);
+    color: #0f1117;
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s;
 }
+.next-btn:active { transform: scale(0.97); }
 
 .btn {
     display: block; width: 100%; padding: 16px; border-radius: var(--radius);
@@ -358,12 +383,6 @@ button {
 }
 .feedback-text.correct { color: var(--correct); background: var(--correct-dim); }
 .feedback-text.wrong { color: var(--wrong); background: var(--wrong-dim); }
-.next-btn {
-    width: 100%; padding: 15px; border-radius: var(--radius); border: none;
-    background: var(--accent); color: #0f1117; font-family: 'Nunito', sans-serif;
-    font-size: 16px; font-weight: 800; cursor: pointer; transition: all 0.15s;
-}
-.next-btn:active { transform: scale(0.97); }
 
 /* ── RESULTS ── */
 #results { justify-content: center; align-items: center; padding: 32px 24px; text-align: center; }
@@ -446,7 +465,7 @@ button {
 .option { animation: slideUp 0.2s ease both; }
 .option:nth-child(1) { animation-delay: 0.02s; }
 .option:nth-child(2) { animation-delay: 0.06s; }
-.option:nth-child(3) { animation-delay: 0.10ps; }
+.option:nth-child(3) { animation-delay: 0.10s; }
 .option:nth-child(4) { animation-delay: 0.14s; }
 
 /* admin search */
@@ -507,8 +526,4 @@ button {
     display: none; /* Se activa con JS */
     z-index: 100;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-@keyframes shine {
-    to { background-position-x: -200%; }
 }

@@ -107,7 +107,9 @@ function renderMoreQuestions() {
         const div = document.createElement('div');
         div.className = 'q-admin-card';
         div.innerHTML = `
-            <div class="q-admin-header">#${q.id}</div>
+            <div class="q-admin-header">
+                <span class="q-code">${code}</span>
+            </div>
             <div class="q-admin-text">${q.pregunta}</div>
             <button class="btn-edit" data-id="${q.id}">Editar</button>
         `;

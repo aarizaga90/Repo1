@@ -132,6 +132,7 @@ if (adminBtn) {
 // ─── ESTADO EN MEMORIA ────────────────────────────
 // Los datos persistentes viven en Dexie. Aquí solo vive la sesión actual.
 let selectedMode = 'all'; // 'all' | 'shuffle' | 'smart' | 'wrong' | 'unseen'
+let selectedTemario = 'todos'; // 'todos' | 'común' | 'específico'
 let answered = false;
 
 let session = {
@@ -172,7 +173,9 @@ async function selectModeSecure(el, mode, target) {
     // 1. Clases en botones
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
     el.classList.add('selected');
-    window.selectedMode = mode;
+
+    selectedMode = mode;
+    console.log("📍 Modo cambiado a:", selectedMode);
 
     // 2. Identificar paneles
     const pTop = document.getElementById('settings-top');
@@ -183,34 +186,99 @@ async function selectModeSecure(el, mode, target) {
     // 3. Cerrar el panel que no estamos usando
     if (inactivePanel) inactivePanel.classList.remove('active');
 
-    // 4. Datos del banco (total de preguntas)
+    // 4. Datos del banco
     const totalPregs = (typeof db !== 'undefined') ? await db.preguntas.count() : 200;
+    
+    const temarioSelectorHTML = `
+    <div class="control-group" style="flex: 1 1 200px; min-width: 200px;">
+        <label style="font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Bloque:</label>
+        <select id="filter-temario" style="width: 100%; padding: 8px; border-radius: 6px; background: #1e1e2e; color: var(--text); border: 1px solid var(--accent-dim); font-size: 14px;">
+            <option value="todos">📚 Todos</option>
+            <option value="común">📘 Común</option>
+            <option value="específico">📙 Específico</option>
+        </select>
+    </div>
+`;
 
     const configs = {
-        'all': { desc: "Estudio secuencial.", html: `Desde: <input type="number" id="range-start" value="1"> Hasta: <input type="number" id="range-end" value="${totalPregs}">` },
-        'smart': { desc: "Prioridad a fallos y nuevas.", html: `Nº preguntas: <input type="number" id="smart-limit" value="20">` },
-        'shuffle': { desc: "Se mezclarán todas las preguntas disponibles.", html: `<span style="font-size:12px; color:var(--muted)">Sin ajustes adicionales.</span>` },
-        'wrong': { desc: "Repasa solo tus fallos.", html: `<span style="font-size:12px; color:var(--muted)">Se cargarán tus errores guardados.</span>` },
-        'unseen': { desc: "Preguntas nunca respondidas.", html: `<span style="font-size:12px; color:var(--muted)">Ideal para completar el banco.</span>` }
+        'all': {
+            desc: "Estudio secuencial por rango.",
+            html: `
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            ${temarioSelectorHTML}
+            <div class="control-group" style="flex: 0 1 auto; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); height: 38px;">
+                <span style="font-size: 12px; color: var(--muted);">Rango:</span>
+                <input type="number" id="range-start" value="1" style="width: 55px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
+                <span style="color: var(--muted);">-</span>
+                <input type="number" id="range-end" value="${totalPregs}" style="width: 55px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
+            </div>
+        </div>`
+        },
+        'smart': {
+            desc: "Prioridad a fallos y nuevas.",
+            html: `
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            ${temarioSelectorHTML}
+            <div class="control-group" style="flex: 0 1 auto; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); height: 38px;">
+                <span style="font-size: 12px; color: var(--muted);">Cantidad:</span>
+                <input type="number" id="smart-limit" value="20" style="width: 50px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
+            </div>
+        </div>`
+        },
+        'shuffle': { desc: "Mezcla aleatoria total.", html: `<div style="display: flex; flex-wrap: wrap; gap: 15px;">${temarioSelectorHTML}</div>` },
+        'wrong': { desc: "Repasa tus errores.", html: `<div style="display: flex; flex-wrap: wrap; gap: 15px;">${temarioSelectorHTML}</div>` },
+        'unseen': { desc: "Preguntas nuevas.", html: `<div style="display: flex; flex-wrap: wrap; gap: 15px;">${temarioSelectorHTML}</div>` }
     };
 
     const config = configs[mode];
 
     if (activePanel && config) {
-        // Inyectamos el contenido primero (invisible porque max-height es 0)
         activePanel.innerHTML = `
-            <div class="panel-content" style="border-left: 3px solid var(--accent); padding-left: 12px;">
-                <p style="margin:0 0 8px 0; font-size:12px; color:var(--muted); line-height:1.4;">${config.desc}</p>
-                <div class="panel-controls" style="display:flex; align-items:center; gap:5px; color:var(--accent); font-weight:bold; font-size:14px;">
+            <div class="panel-content" style="border-left: 3px solid var(--accent); padding: 5px 0 10px 15px;;">
+                <p style="margin:0 0 12px 0; font-size:12px; color:var(--muted); line-height:1.4;">${config.desc}</p>
+                <div class="panel-controls" style="display:block; color:var(--accent); font-weight:bold;">
                     ${config.html}
                 </div>
             </div>
         `;
 
-        // Pequeño truco para que el navegador detecte el cambio y anime
         requestAnimationFrame(() => {
             activePanel.classList.add('active');
         });
+
+        // ─── NUEVO CÓDIGO AQUÍ: Lógica de actualización dinámica ───
+        const selector = activePanel.querySelector('#filter-temario');
+        if (selector) {
+            selector.addEventListener('change', async (e) => {
+                const val = e.target.value;
+                let count;
+
+                // 1. Contar cuántas preguntas hay de ese bloque
+                if (val === 'todos') {
+                    count = await db.preguntas.count();
+                } else {
+                    count = await db.preguntas.where('temario').equals(val).count();
+                }
+
+                console.log(`📊 Filtro cambiado: ${val}. Disponibles: ${count}`);
+
+                // 2. Actualizar inputs de rango (Modo All)
+                const rStart = document.getElementById('range-start');
+                const rEnd = document.getElementById('range-end');
+                if (rStart && rEnd) {
+                    rStart.value = 1;
+                    rEnd.value = count;
+                    rEnd.max = count;
+                }
+
+                // 3. Actualizar límite (Modo Smart)
+                const sLimit = document.getElementById('smart-limit');
+                if (sLimit) {
+                    sLimit.max = count;
+                    if (parseInt(sLimit.value) > count) sLimit.value = count;
+                }
+            });
+        }
     }
 }
 
@@ -246,12 +314,27 @@ async function refreshHome() {
     }
 }
 
+function getQuestionCode(q) {
+    if (!q || !q.temario || q.numero_temario === undefined) return "S/N";
+
+    // Sacamos la inicial: "común" -> "C", "específico" -> "E"
+    const letra = q.temario.toLowerCase().startsWith('e') ? 'E' : 'C';
+    return `${q.numero_temario}-${letra}`;
+}
+
 // ═══════════════════════════════════════════════
 //  STUDY — arranque de sesión
 // ═══════════════════════════════════════════════
 async function startStudy() {
     const total = await db.preguntas.count();
     if (total === 0) return;
+
+    console.log("🚀 Iniciando sesión. Modo seleccionado:", selectedMode);
+
+    const temarioInput = document.getElementById('filter-temario');
+    selectedTemario = temarioInput ? temarioInput.value : 'todos';
+    
+    console.log("🎯 Filtrando por temario:", selectedTemario);
 
     // Reset de sesión
     session = {
@@ -266,6 +349,7 @@ async function startStudy() {
     };
 
     if (selectedMode === 'smart') {
+        console.log("🧠 Entrando en lógica Smart...");
         const first = await getSmartNextQuestion();
         if (!first) {
             alert('No hay preguntas disponibles');
@@ -273,6 +357,7 @@ async function startStudy() {
         }
         session.currentQuestion = first;
         session.lastId = first.id;
+        console.log("✅ Primera pregunta elegida:", getQuestionCode(first), "ID:", first.id);
         prepareNextQuestion(); // fire-and-forget
         startTimer();
         showScreen('study');
@@ -287,37 +372,51 @@ async function startStudy() {
     ]);
     const statsMap = new Map(allStats.map(s => [s.id, s]));
 
-    let pool = allQuestions;
+    let pool = await db.preguntas.toArray();
 
-    if (selectedMode === 'wrong') {
+    // 2. APLICAR FILTRO DE TEMARIO
+    if (selectedTemario !== 'todos') {
+        pool = pool.filter(q => q.temario === selectedTemario);
+    }
+
+    // 3. APLICAR EL RANGO SOBRE LA LISTA FILTRADA
+    if (selectedMode === 'all') {
+        console.log("📋 Iniciando modo TODAS:", selectedMode);
+        const startInput = document.getElementById('range-start');
+        const endInput = document.getElementById('range-end');
+
+        // Si el usuario puso 1 a 50, sacamos las 50 primeras del bloque elegido
+        const startVal = startInput ? parseInt(startInput.value, 10) : 1;
+        const endVal = endInput ? parseInt(endInput.value, 10) : pool.length;
+
+        const start = Math.max(0, startVal - 1);
+        const end = Math.min(pool.length, endVal);
+
+        pool = pool.slice(start, end);
+    } else if (selectedMode === 'wrong') {
+        console.log("📋 Iniciando modo Falladas:", selectedMode);
         pool = pool.filter(q => {
             const s = statsMap.get(q.id);
             return s && (s.wrong || 0) > 0;
         });
     } else if (selectedMode === 'unseen') {
+        console.log("📋 Iniciando modo NO-VISTAS:", selectedMode);
         pool = pool.filter(q => !statsMap.has(q.id));
-    }
-
-    if (selectedMode === 'shuffle' || selectedMode === 'wrong' || selectedMode === 'unseen') {
+    } else if (selectedMode === 'shuffle' || selectedMode === 'wrong' || selectedMode === 'unseen') {
         pool = pool.slice().sort(() => Math.random() - 0.5);
-    } else if (selectedMode === 'all') {
-        const startVal = parseInt(document.getElementById('range-start').value, 10);
-        const endVal = parseInt(document.getElementById('range-end').value, 10);
-        const start = Number.isFinite(startVal) && startVal > 0 ? startVal - 1 : 0;
-        const end = Number.isFinite(endVal) && endVal > 0 ? endVal : pool.length;
-        pool = pool.slice(start, end);
     }
 
     if (pool.length === 0) {
-        const msg = selectedMode === 'wrong'  ? 'No tienes preguntas falladas 🎉'
-            : selectedMode === 'unseen' ? 'Ya has visto todas las preguntas'
-                :                             'No hay preguntas en esta selección';
+        const msg = selectedMode === 'wrong'  ? 'No tienes preguntas falladas en ${selectedTemario} 🎉'
+            : selectedMode === 'unseen' ? 'Ya has visto todas las preguntas de ${selectedTemario}'
+                :                             'No hay preguntas en ${selectedTemario}';
         alert(msg);
         return;
     }
 
     session.queue = pool;
     session.currentQuestion = pool[0];
+    console.log("✅ Primera pregunta elegida:", getQuestionCode(pool[0]), "ID:", pool[0].id);
     startTimer();
     showScreen('study');
     renderCurrentQuestion();
@@ -329,6 +428,8 @@ async function startStudy() {
 function renderCurrentQuestion() {
     const q = session.currentQuestion;
     if (!q) return;
+
+    const code = getQuestionCode(q);
 
     answered = false;
     const idx = session.index;
@@ -342,6 +443,7 @@ function renderCurrentQuestion() {
     document.getElementById('study-fill').style.width = (idx / total * 100) + '%';
     document.getElementById('answer-footer').style.display = 'none';
     document.getElementById('question-scroll').scrollTop = 0;
+    document.querySelector('.question-num').textContent = `PREGUNTA ${code}`;
 
     const list = document.getElementById('options-list');
     list.innerHTML = '';
@@ -391,23 +493,33 @@ async function selectAnswer(chosen) {
 }
 
 async function nextQuestion() {
+    console.log("⏭️ Click en Siguiente. Modo actual:", session.mode);
     if (session.mode === 'smart') {
         session.index++;
         if (session.index >= SMART_SESSION_LENGTH) {
+            console.log("🏁 Fin de sesión smart.");
             showResults();
             return;
         }
         // Usamos el buffer precargado; si no está listo, cargamos en el momento
         let q = session.nextBuffer;
+        if (q) {
+            console.log("📦 Usando pregunta del BUFFER:", getQuestionCode(q));
+        } else {
+            console.warn("⚠️ Buffer vacío, calculando al vuelo...");
+            q = await getSmartNextQuestion();
+        }
+        
         session.nextBuffer = null;
-        if (!q) q = await getSmartNextQuestion();
-        if (!q) { showResults(); return; }
         session.currentQuestion = q;
-        session.lastId = q.id;
+        session.lastId = q ? q.id : null;
+
         prepareNextQuestion(); // precarga la siguiente
         renderCurrentQuestion();
     } else {
+        // Modo normal
         session.index++;
+        console.log("📑 Siguiente pregunta secuencial. Nuevo índice:", session.index);
         if (session.index >= session.queue.length) {
             showResults();
             return;
@@ -428,35 +540,58 @@ function showFeedback(correct) {
 //  60% prioridad a nuevas, 40% repaso ordenado por peso
 // ═══════════════════════════════════════════════
 async function getSmartNextQuestion() {
-    const [allIds, allStats] = await Promise.all([
-        db.preguntas.toCollection().primaryKeys(),
-        db.stats.toArray()
-    ]);
-    if (allIds.length === 0) return null;
+    console.group("🔍 Buscando próxima pregunta Smart");
+
+    let query = (selectedTemario !== 'todos')
+        ? db.preguntas.where('temario').equals(selectedTemario)
+        : db.preguntas.toCollection();
+
+    const allIds = await query.primaryKeys();
+    const allStats = await db.stats.toArray();
+    
+    if (allIds.length === 0) {
+        console.groupEnd();
+        return null;
+    }
 
     const statsMap = new Map(allStats.map(s => [s.id, s]));
-    const nuevas = allIds.filter(id => !statsMap.has(id) && id !== session.lastId);
 
+    // 1. Filtrar candidatas (excluir la actual para no repetir)
+    const candidatasIds = allIds.filter(id => id !== session.lastId);
+    if (candidatasIds.length === 0) return await db.preguntas.get(allIds[0]);
+
+    // 2. Separar en "Nuevas" y "Repaso"
+    const nuevas = candidatasIds.filter(id => !statsMap.has(id));
+    const repaso = allStats
+        .filter(s => candidatasIds.includes(s.id) && ((s.wrong || 0) > 0 || (s.peso || 1) > 1))
+        .sort((a, b) => (b.peso || 1) - (a.peso || 1));
+
+    console.log("📊 Estado del banco:", { total: allIds.length, nuevas: nuevas.length, repaso: repaso.length, lastId: session.lastId });
+    
     let targetId;
     const azar = Math.random();
 
-    if (nuevas.length > 0 && azar < 0.6) {
+    // LÓGICA DE DECISIÓN
+    if (nuevas.length > 0 && (repaso.length === 0 || azar < 0.6)) {
+        // MODO NUEVAS: 60% de probabilidad o si no hay nada que repasar
+        // Forzamos aleatoriedad total sobre el array de nuevas
         targetId = nuevas[Math.floor(Math.random() * nuevas.length)];
-    } else {
-        const repaso = allStats
-            .filter(s => s.id !== session.lastId)
-            .sort((a, b) => (b.peso || 1) - (a.peso || 1));
-
-        if (repaso.length > 0) {
-            targetId = repaso[0].id;
-        } else {
-            const candidatas = allIds.filter(id => id !== session.lastId);
-            targetId = candidatas.length > 0
-                ? candidatas[Math.floor(Math.random() * candidatas.length)]
-                : allIds[0];
-        }
+        console.log("🎲 Decisión: NUEVA al azar. ID elegido:", targetId);
+    }
+    else if (repaso.length > 0) {
+        // MODO REPASO: Elegimos entre las 3 con más peso para variar un poco
+        const topCount = Math.min(3, repaso.length);
+        const topCandidatas = repaso.slice(0, topCount);
+        targetId = topCandidatas[Math.floor(Math.random() * topCandidatas.length)].id;
+        console.log("🔄 Decisión: REPASO (Top 3). ID elegido:", targetId);
+    }
+    else {
+        // FALLBACK: Si no hay nuevas ni repaso con peso, aleatorio puro sobre t.odo el banco
+        targetId = candidatasIds[Math.floor(Math.random() * candidatasIds.length)];
+        console.log("⚠️ Decisión: FALLBACK aleatorio total. ID elegido:", targetId);
     }
 
+    console.groupEnd();
     return await db.preguntas.get(targetId);
 }
 
@@ -569,14 +704,15 @@ async function renderHistory() {
 
     list.innerHTML = answeredQs.map(q => {
         const s = statsMap.get(q.id);
+        const code = getQuestionCode(q);
         return `<div class="hist-item">
-            <span class="hist-num">#${q.id}</span>
-            <span class="hist-q">${escapeHtml(q.pregunta)}</span>
-            <div class="hist-badges">
-                <span class="badge c">✓ ${s.correct || 0}</span>
-                <span class="badge w">✗ ${s.wrong || 0}</span>
-            </div>
-        </div>`;
+        <span class="hist-num">${code}</span> 
+        <span class="hist-q">${escapeHtml(q.pregunta)}</span>
+        <div class="hist-badges">
+            <span class="badge c">✓ ${s.correct || 0}</span>
+            <span class="badge w">✗ ${s.wrong || 0}</span>
+        </div>
+    </div>`;
     }).join('');
 }
 
@@ -621,25 +757,40 @@ async function handleFileImport(e) {
         const text = await file.text();
         const data = JSON.parse(text);
 
-        if (!Array.isArray(data) || data.length === 0) throw new Error('Array vacío');
+        if (!Array.isArray(data) || data.length === 0) throw new Error('El archivo está vacío');
+
         const sample = data[0];
-        if (!sample.pregunta || !Array.isArray(sample.opciones) || sample.opciones.length < 2) {
-            throw new Error('Formato incorrecto');
+        // Validamos el nuevo formato: pregunta, opciones, temario y numero_temario
+        if (!sample.pregunta || !Array.isArray(sample.opciones) || !sample.temario || sample.numero_temario === undefined) {
+            throw new Error('Formato JSON incorrecto (faltan campos de temario)');
         }
-        data.forEach((q, i) => {
-            if (q.id === undefined) q.id = i + 1;
-            if (q.correcta === undefined) q.correcta = 0;
+
+        // Limpieza y preparación de datos antes de insertar
+        const cleanData = data.map(q => {
+            // Creamos un objeto nuevo para asegurarnos de que NO tenga un ID previo
+            // y que IndexedDB genere uno nuevo desde 1
+            return {
+                temario: q.temario,
+                numero_temario: q.numero_temario,
+                pregunta: q.pregunta,
+                opciones: q.opciones,
+                correcta: q.correcta !== undefined ? q.correcta : 0
+            };
         });
 
-        // Reemplazo completo (coherente con el texto del overlay de importar)
+        // 1. Borramos la base de datos actual para que el autoincremento empiece de 1
         await db.preguntas.clear();
-        await db.preguntas.bulkPut(data);
+        await db.stats.clear();
+
+        // 2. Insertamos el bloque de preguntas. 
+        // IndexedDB asignará los IDs internos automáticamente.
+        await db.preguntas.bulkAdd(cleanData);
 
         await refreshHome();
-        showStatus(`✓ ${data.length} preguntas importadas correctamente`, true);
+        showStatus(`✓ ${cleanData.length} preguntas de temario importadas`, true);
         setTimeout(closeImport, 1800);
     } catch (err) {
-        showStatus('✗ Error al leer el fichero: ' + err.message, false);
+        showStatus('✗ Error: ' + err.message, false);
     } finally {
         e.target.value = '';
     }

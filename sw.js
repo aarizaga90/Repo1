@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opos-v2';
+const CACHE_NAME = 'opos-v3';
 const ASSETS = [
     './',
     './index.html',
@@ -15,21 +15,32 @@ self.addEventListener('install', e => {
     e.waitUntil(
         caches.open(CACHE_NAME)
             .then(c => c.addAll(ASSETS))
-            .then(() => self.skipWaiting())
     );
+    self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
     e.waitUntil(
-        caches.keys().then(keys =>
-            Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-        ).then(() => self.clients.claim())
+        caches.keys().then(keys => Promise.all(
+            keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null)
+        ))
     );
+    self.clients.claim();
 });
 
 // Estrategia: network-first con fallback a caché (tu elección previa)
 self.addEventListener('fetch', e => {
     e.respondWith(
-        fetch(e.request).catch(() => caches.match(e.request))
+        caches.match(e.request).then(cachedResponse => {
+            const networkFetch = fetch(e.request).then(networkResponse => {
+                // Actualizamos la caché en segundo plano
+                return caches.open(CACHE_NAME).then(cache => {
+                    cache.put(e.request, networkResponse.clone());
+                    return networkResponse;
+                });
+            });
+            // Prioriza caché si existe, si no, espera a la red
+            return cachedResponse || networkFetch;
+        })
     );
 });

@@ -154,14 +154,11 @@ async function boot() {
     const pregCount = await db.preguntas.count();
     if (pregCount === 0 && typeof DEFAULT_QUESTIONS !== 'undefined' && DEFAULT_QUESTIONS.length > 0) {
         await db.preguntas.bulkPut(DEFAULT_QUESTIONS);
-    }
+    }   
 
     await refreshHome();
-
-    // Registro del SW SIEMPRE (no solo en la primera carga)
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
-    }
+    
+    initServiceWorker();
 }
 
 // ═══════════════════════════════════════════════
@@ -828,6 +825,52 @@ function showScreen(id) {
     if (id === 'history') renderHistory();
     if (id === 'home') refreshHome();
     if (id !== 'study') stopTimer(); // si salimos del estudio, paramos el timer
+}
+
+/**
+ * Gestiona el registro del SW y la detección de actualizaciones
+ */
+function initServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+
+                // A. Escuchar si se encuentra un SW nuevo (en segundo plano)
+                reg.addEventListener('updatefound', () => {
+                    const newWorker = reg.installing;
+                    newWorker.addEventListener('statechange', () => {
+                        // Si el nuevo SW está instalado pero hay un controlador activo, 
+                        // significa que es una actualización, no la primera instalación.
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            lanzarAvisoActualizacion();
+                        }
+                    });
+                });
+
+                // B. Forzar chequeo cuando la app vuelve a primer plano (Crucial para iOS)
+                document.addEventListener("visibilitychange", () => {
+                    if (document.visibilityState === 'visible') {
+                        reg.update();
+                        console.log("🔍 PWA visible: Buscando actualizaciones en el servidor...");
+                    }
+                });
+
+            }).catch(err => console.log("SW error:", err));
+        });
+    }
+}
+
+/**
+ * Muestra el aviso al usuario
+ */
+function lanzarAvisoActualizacion() {
+    // Usamos un pequeño delay para no interrumpir si la app acaba de abrirse
+    setTimeout(() => {
+        const mensaje = "🚀 ¡Hay una nueva versión disponible con cambios o nuevas preguntas! \n\n ¿Quieres actualizar ahora?";
+        if (confirm(mensaje)) {
+            window.location.reload();
+        }
+    }, 1000);
 }
 
 // ═══════════════════════════════════════════════

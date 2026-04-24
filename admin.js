@@ -104,6 +104,8 @@ function renderMoreQuestions() {
     
     const fragment = document.createDocumentFragment();
     nextBatch.forEach(q => {
+        const letra = q.temario && q.temario.toLowerCase().startsWith('e') ? 'E' : 'C';
+        const code = `${q.numero_temario || 'S/N'}-${letra}`;
         const div = document.createElement('div');
         div.className = 'q-admin-card';
         div.innerHTML = `
@@ -115,7 +117,7 @@ function renderMoreQuestions() {
         `;
         fragment.appendChild(div);
         div.querySelector('.btn-edit').addEventListener('click', () => {
-            abrirEditorCompleto(q.Id)
+            abrirEditorCompleto(q.id)
         });
     });
     

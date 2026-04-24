@@ -111,9 +111,9 @@ function renderMoreQuestions() {
         div.innerHTML = `
             <div class="q-admin-header">
                 <span class="q-code">${code}</span>
+                <button class="btn-edit" data-id="${q.id}">Editar</button>
             </div>
             <div class="q-admin-text">${q.pregunta}</div>
-            <button class="btn-edit" data-id="${q.id}">Editar</button>
         `;
         fragment.appendChild(div);
         div.querySelector('.btn-edit').addEventListener('click', () => {
@@ -153,28 +153,40 @@ async function abrirEditorCompleto(id) {
 
     document.getElementById('edit-text').value = q.pregunta;
     const optsContainer = document.getElementById('edit-options-list');
-    optsContainer.innerHTML = '<label style="color:var(--muted); font-size:12px;">OPCIONES (Marca la correcta)</label>';
+    
+    // Limpiamos y añadimos título
+    optsContainer.innerHTML = '<label style="color:var(--muted); font-size:12px; display:block; margin-bottom:10px;">OPCIONES (Marca la correcta)</label>';
 
     q.opciones.forEach((opt, i) => {
         const div = document.createElement('div');
-        div.style.display = "flex";
-        div.style.alignItems = "center";
-        div.style.gap = "10px";
-        div.style.marginTop = "10px";
+        div.className = 'edit-option-row'; // Usamos la clase nueva del CSS
         
         div.innerHTML = `
-            <input type="radio" name="correcta" value="${i}" ${q.correcta === i ? 'checked' : ''}>
-            <input type="text" class="edit-opt-input" value="${opt}" style="flex:1; background:var(--surface2); color:white; border:1px solid var(--border); border-radius:8px; padding:8px;">
+            <input type="radio" name="correcta" value="${i}" ${q.correcta === i ? 'checked' : ''} style="margin-top:5px;">
+            <textarea class="edit-opt-input edit-opt-textarea" rows="2">${opt}</textarea>
         `;
         optsContainer.appendChild(div);
     });
 
-    // Guardar el ID en el botón de guardar para saber cuál actualizar
+    // Evento para que los textareas crezcan solos al escribir (opcional pero pro)
+    const textareas = optsContainer.querySelectorAll('textarea');
+    textareas.forEach(tx => {
+        tx.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+        // Ajustar altura inicial
+        setTimeout(() => {
+            tx.style.height = (tx.scrollHeight) + 'px';
+        }, 10);
+    });
+
     document.getElementById('save-edit').onclick = () => guardarCambios(id);
     document.getElementById('cancel-edit').onclick = () => showScreen('admin-list');
 
     showScreen('edit-screen');
 }
+
 
 async function guardarCambios(id) {
     const nuevoTexto = document.getElementById('edit-text').value;

@@ -679,6 +679,12 @@ function showResults() {
     stopTimer();
     const total = session.correct + session.wrong;
     const pct = total > 0 ? Math.round(session.correct / total * 100) : 0;
+
+    const mins = Math.floor(secondsElapsed /60);
+    const secs = secondsElapsed % 60;
+    const tiempoFormateado = `${mins}:${secs.toString().padStart(2,'0')}`;
+    const media = total > 0 ? (secondsElapsed / total).toFixed(1) : 0;
+
     let emoji = '😐', title = 'Sesión completada';
     if (pct >= 90)      { emoji = '🏆'; title = '¡Sobresaliente!'; }
     else if (pct >= 70) { emoji = '🎯'; title = '¡Muy bien!'; }
@@ -691,6 +697,8 @@ function showResults() {
     document.getElementById('res-pct').textContent = pct + '%';
     document.getElementById('res-correct').textContent = session.correct;
     document.getElementById('res-wrong').textContent = session.wrong;
+    document.getElementById('res-time').textContent = tiempoFormateado;
+    document.getElementById('res-avg').textContent = `${media}s`;
     showScreen('results');
 }
 

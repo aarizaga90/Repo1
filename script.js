@@ -127,6 +127,33 @@ if (adminBtn) {
     });
 }
 
+// 1. Vincular el nuevo botón (pon esto dentro del DOMContentLoaded)
+const finishEarlyBtn = document.getElementById('finish-early-btn');
+if (finishEarlyBtn) {
+    finishEarlyBtn.addEventListener('click', () => {
+        if (confirm("¿Quieres ver los resultados ahora y terminar la sesión?")) {
+            showResults();
+        }
+    });
+}
+
+// 2. Modificar la flecha de atrás para que no borre todo sin avisar
+document.querySelectorAll('.back-to-home').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        // Si estamos en la pantalla de estudio y hay preguntas respondidas...
+        const currentScreen = document.querySelector('.screen.active').id;
+        if (currentScreen === 'study' && (session.correct > 0 || session.wrong > 0)) {
+            if (!confirm("Si sales perderás el progreso de esta sesión. ¿Salir?")) {
+                e.preventDefault(); // Detiene la salida
+                return;
+            }
+        }
+        showResults();
+        showScreen('home');
+    });
+});
+
+
 });
 
 // ─── ESTADO EN MEMORIA ────────────────────────────
@@ -222,7 +249,17 @@ async function selectModeSecure(el, mode, target) {
             </div>
         </div>`
         },
-        'shuffle': { desc: "Mezcla aleatoria total.", html: `<div style="display: flex; flex-wrap: wrap; gap: 15px;">${temarioSelectorHTML}</div>` },
+        'shuffle': { desc: "Mezcla aleatoria total, con opcion a elegir rango.",
+            html: `
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            ${temarioSelectorHTML}
+             <div class="control-group" style="flex: 0 1 auto; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); height: 38px;">
+                <span style="font-size: 12px; color: var(--muted);">Rango:</span>
+                <input type="number" id="range-start" value="1" style="width: 55px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
+                <span style="color: var(--muted);">-</span>
+                <input type="number" id="range-end" value="${totalPregs}" style="width: 55px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
+            </div>
+            </div>` },
         'wrong': { desc: "Repasa tus errores.", html: `<div style="display: flex; flex-wrap: wrap; gap: 15px;">${temarioSelectorHTML}</div>` },
         'unseen': { desc: "Preguntas nuevas.", html: `<div style="display: flex; flex-wrap: wrap; gap: 15px;">${temarioSelectorHTML}</div>` }
     };
@@ -416,7 +453,24 @@ async function startStudy() {
     } else if (selectedMode === 'unseen') {
         console.log("📋 Iniciando modo NO-VISTAS:", selectedMode);
         pool = pool.filter(q => !statsMap.has(q.id));
-    } else if (selectedMode === 'shuffle' || selectedMode === 'wrong' || selectedMode === 'unseen') {
+        } else if (selectedMode === 'shuffle') {
+    console.log("🔀 Iniciando modo ALEATORIO POR RANGO");
+    const startInput = document.getElementById('range-start');
+    const endInput = document.getElementById('range-end');
+
+    const startVal = startInput ? parseInt(startInput.value, 10) : 1;
+    const endVal = endInput ? parseInt(endInput.value, 10) : pool.length;
+
+    const start = Math.max(0, startVal - 1);
+    const end = Math.min(pool.length, endVal);
+
+    // PRIMERO: Cortamos el rango que el usuario quiere
+    pool = pool.slice(start, end);
+    
+    // SEGUNDO: Mezclamos SOLO ese rango
+    pool = pool.sort(() => Math.random() - 0.5);
+
+    } else if (selectedMode === 'wrong' || selectedMode === 'unseen') {
         pool = pool.slice().sort(() => Math.random() - 0.5);
     }
 

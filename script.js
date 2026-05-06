@@ -137,15 +137,12 @@ if(!btn) return;
                 return;
             }
             else {
-                e.preventDefault();
+                //e.preventDefault();
                 return;
             }
         }
         showScreen('home');
     });
-});
-
-
 });
 
 // ─── ESTADO EN MEMORIA ────────────────────────────

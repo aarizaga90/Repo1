@@ -47,19 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. Botones de "Atrás" (si les pusiste una clase común como .back-btn)
-    const backButtons = document.querySelectorAll('.back-btn');
-    backButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            showScreen('home');
-        });
-    });
-
-    // 1. Botones de "Atrás" (todos los que vuelven a Home)
-    document.querySelectorAll('.back-to-home').forEach(btn => {
-        btn.addEventListener('click', () => showScreen('home'));
-    });
-
     // 2. Pantalla de Estudio: Botón Siguiente
     const nextBtn = document.getElementById('next-btn');
     if (nextBtn) {
@@ -138,17 +125,22 @@ if (finishEarlyBtn) {
 }
 
 // 2. Modificar la flecha de atrás para que no borre todo sin avisar
-document.querySelectorAll('.back-to-home').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+document.addEventListener('click', (e) => {
+const btn = e.target.closest('.back-to-home, .back-btn');
+if(!btn) return;
+
         // Si estamos en la pantalla de estudio y hay preguntas respondidas...
         const currentScreen = document.querySelector('.screen.active').id;
         if (currentScreen === 'study' && (session.correct > 0 || session.wrong > 0)) {
-            if (!confirm("Si sales perderás el progreso de esta sesión. ¿Salir?")) {
-                e.preventDefault(); // Detiene la salida
+            if (confirm("Quieres terminar la sesión y ver los resultados actuales?")) {
+                showResults(); // Detiene la salida
+                return;
+            }
+            else {
+                e.preventDefault();
                 return;
             }
         }
-        showResults();
         showScreen('home');
     });
 });

@@ -39,6 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    if(clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', clearHistory)
+    }
+
     // 3. Botón Historial
     const historyBtn = document.getElementById('history-btn');
     if (historyBtn) {
@@ -235,6 +240,9 @@ async function selectModeSecure(el, mode, target) {
             <div class="control-group" style="flex: 0 1 auto; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); height: 38px;">
                 <span style="font-size: 12px; color: var(--muted);">Cantidad:</span>
                 <input type="number" id="smart-limit" value="20" min="1" max="${totalPregs}" style="width: 50px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
+                <label sytle="display:flex; allign-items:center; gap:6px; font-size:12">
+                <input type="checkbox" id="smart-infinite">♾️
+                </label>
             </div>
         </div>`
         },
@@ -378,17 +386,24 @@ async function startStudy() {
         let userLimit = cuentaPreguntas ? parseInt(cuentaPreguntas.value, 10) : 20;
 
         let query = (selectedTemario !== 'todos') ? db.preguntas.where('temario').equals(selectedTemario) : db.preguntas.toCollection();
-        const totalDisponible = query.count();
+        const totalDisponible = await query.count();
 
         if(totalDisponible === 0) {
             alert("No hay preguntas en la selección");
             return;
         }
 
-        if (isNaN(userLimit) || userLimit < 1) userLimit = 1;
-        if (userLimit > totalDisponible) userLimit = totalDisponible;
+        const infiniteCheckbox = document.getElementById('smart-infinite');
+        const esInfinito = infiniteCheckbox && infiniteCheckbox.checked;
 
-        SMART_SESSION_LENGTH = userLimit;
+        if (esInfinito) {
+            SMART_SESSION_LENGTH = Infinity;
+        } else {
+            let userLimit = parseInt(document.getElementById('smart-limit')?.value, 10);
+        if (isNaN(userLimit) || userLimit < 1) userLimit = 1;
+
+        SMART_SESSION_LENGTH = Math.min(userLimit, totalDisponible);
+        }
 
         const first = await getSmartNextQuestion();
         if (!first) {

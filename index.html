@@ -124,7 +124,6 @@
         </div>
 
         <footer class="answer-footer" id="answer-footer" style="display:none">
-    <div class="feedback-text" id="feedback-text"></div>
     <div style="display: flex; gap: 10px; width: 100%;">
         <button class="btn btn-secondary" id="finish-early-btn" style="flex: 1; background: rgba(255,255,255,0.05);">Finalizar</button>
         <button class="next-btn" id="next-btn" style="flex: 2;">Siguiente →</button>
@@ -200,7 +199,20 @@
     </div>
 </section>
 
-</div>
+    <!-- Modal de confirmación -->
+    <div id="modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" style="display:none">
+        <div class="modal-box">
+            <p class="modal-msg" id="modal-msg"></p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+                <button class="btn btn-primary" id="modal-confirm">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast informativo -->
+    <div id="toast" class="toast" aria-live="polite"></div>
+    
     <div id="import-overlay" role="dialog" aria-modal="true" aria-labelledby="import-title">
     <div class="import-sheet">
         <div class="sheet-handle"></div>
@@ -225,6 +237,7 @@
         <div class="import-status" id="import-status" aria-live="polite"></div>
         <button class="btn btn-ghost" id="close-import-btn" style="margin-top:12px">Cancelar</button>
     </div>
+</div>
 </div>
 
 </body>

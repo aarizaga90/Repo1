@@ -200,7 +200,7 @@ async function guardarCambios(id) {
     const checkedRadio = optsContainer.querySelector('input[name="correcta"]:checked');
     if (!checkedRadio) {
         // Sustituir por toast cuando esté implementado (ver ME1)
-        alert('Marca cuál es la respuesta correcta antes de guardar.');
+        showToast('Marca cuál es la respuesta correcta antes de guardar.');
         return;
     }
     

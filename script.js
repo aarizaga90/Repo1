@@ -123,9 +123,11 @@ if (adminBtn) {
 const finishEarlyBtn = document.getElementById('finish-early-btn');
 if (finishEarlyBtn) {
     finishEarlyBtn.addEventListener('click', () => {
-        if (confirm("¿Quieres ver los resultados ahora y terminar la sesión?")) {
-            showResults();
-        }
+        showModal("¿Quieres terminar la sesión y ver los resultados ahora?", {
+            confirmText: 'Ver resultados',
+            cancelText: 'Seguir',
+            onConfirm: () => showResults()
+        });
     });
 }
 
@@ -137,14 +139,12 @@ if(!btn) return;
         // Si estamos en la pantalla de estudio y hay preguntas respondidas...
         const currentScreen = document.querySelector('.screen.active').id;
         if (currentScreen === 'study' && (session.correct > 0 || session.wrong > 0)) {
-            if (confirm("Quieres terminar la sesión y ver los resultados actuales?")) {
-                showResults(); // Detiene la salida
-                return;
-            }
-            else {
-                //e.preventDefault();
-                return;
-            }
+            showModal("¿Quieres terminar la sesión y ver los resultados actuales?", {
+                confirmText: 'Ver resultados',
+                cancelText: 'Seguir',
+                onConfirm: () => showResults()
+            });
+            return;
         }
         showScreen('home');
     });
@@ -262,7 +262,7 @@ async function selectModeSecure(el, mode, target) {
             <div class="control-group" style="flex: 0 1 auto; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); height: 38px;">
                 <span style="font-size: 12px; color: var(--muted);">Cantidad:</span>
                 <input type="number" id="smart-limit" value="20" min="1" max="${totalPregs}" style="width: 50px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
-                <label sytle="display:flex; allign-items:center; gap:6px; font-size:12">
+                <label style="display: flex; allign-items: center; gap: 6px; font-size: 12px">
                 <input type="checkbox" id="smart-infinite">♾️
                 </label>
             </div>
@@ -383,7 +383,7 @@ function getQuestionCode(q) {
 async function startStudy() {
     const total = await db.preguntas.count();
     if (total === 0) {
-        alert("No hay preguntas en la selección");
+        showToast("No hay preguntas en la selección");
         return;
     }
 
@@ -401,6 +401,7 @@ async function startStudy() {
         index: 0,
         correct: 0,
         wrong: 0,
+        wrongAnswers: [],
         currentQuestion: null,
         nextBuffer: null,
         lastId: null
@@ -418,7 +419,7 @@ async function startStudy() {
         const totalDisponible = await query.count();
 
         if(totalDisponible === 0) {
-            alert("No hay preguntas en la selección");
+            showToast("No hay preguntas en la selección");
             return;
         }
 
@@ -436,7 +437,7 @@ async function startStudy() {
 
         const first = await getSmartNextQuestion();
         if (!first) {
-            alert('No hay preguntas disponibles');
+            showToast('No hay preguntas disponibles');
             return;
         }
         session.currentQuestion = first;
@@ -464,7 +465,7 @@ async function startStudy() {
 
         const examPool = [...poolComun, ...poolEspec].sort(() => Math.random() - 0.5);
 
-        if (examPool.length === 0) { alert("No hay preguntas disponibles"); return; }
+        if (examPool.length === 0) { showToast("No hay preguntas disponibles"); return; }
 
         // 3. Configurar sesión especial
         session.mode = 'exam';
@@ -538,7 +539,7 @@ async function startStudy() {
         const msg = selectedMode === 'wrong'  ? `No tienes preguntas falladas en ${selectedTemario} 🎉`
             : selectedMode === 'unseen' ? `Ya has visto todas las preguntas de ${selectedTemario}`
                 :                             `No hay preguntas en ${selectedTemario}`;
-        alert(msg);
+        showToast(msg);
         return;
     }
 
@@ -584,10 +585,12 @@ function renderCurrentQuestion() {
     const footer = document.getElementById('answer-footer');
     if (isExam) {
         footer.style.display = 'none'; // En examen no hay explicación inmediata
+        document.getElementById('study').classList.remove('footer-visible');
         // Si tienes un badge de tiempo, lo actualizamos aquí
         updateTimerDisplay();
     } else {
         footer.style.display = 'none'; // Se mostrará al responder en modo normal
+        document.getElementById('study').classList.remove('footer-visible');
     }
 
     // 3. Renderizado de opciones
@@ -608,9 +611,8 @@ function renderCurrentQuestion() {
             `<span class="option-letter">${letters[i]}</span>` +
             `<span class="option-text"></span>`;
         btn.querySelector('.option-text').textContent = opt;
-
-        // Cambiamos la función de clic según el modo
-        btn.onclick = () => isExam ? selectAnswer(i) : selectAnswer(i);
+        
+        btn.onclick = () => selectAnswer(i);
 
         list.appendChild(btn);
     });
@@ -666,11 +668,13 @@ function confirmFinishExam() {
     const respondidas = Object.keys(session.answers).length;
     const total = session.queue.length;
 
-    const mssg = `Has respondido ${respondidas} de ${total} preguntas.\n¿Estás seguro de que quieres entregar el examen?`;
+    const msg = `Has respondido ${respondidas} de ${total} preguntas.\n¿Estás seguro de que quieres entregar el examen?`;
 
-    if (confirm(mssg)) {
-        finishExam();
-    }
+    showModal(msg, {
+        confirmText: 'Terminar el examen',
+        cancelText: 'Seguir con el examen',
+        onConfirm: () => finishExam()
+    });
 }
 
 async function finishExam() {
@@ -747,13 +751,16 @@ async function selectAnswer(chosen) {
         session.wrong++;
     }
 
-    showFeedback(isCorrect);
-
     // Persistir la respuesta (estadística)
-    await recordAnswer(q.id, isCorrect);
-
-    // Mostrar footer con botón Siguiente / Ver resultados
+    try {
+        await recordAnswer(q.id, isCorrect);
+    } catch(e) {
+        console.error('Error guardando respuesta:', e);
+    }
+    
+    //mostrar footer
     document.getElementById('answer-footer').style.display = 'block';
+    document.getElementById('study').classList.add('footer-visible');
     const isLast = session.mode === 'smart'
         ? session.index + 1 >= SMART_SESSION_LENGTH
         : session.index >= session.queue.length - 1;
@@ -795,12 +802,6 @@ async function nextQuestion() {
         session.currentQuestion = session.queue[session.index];
         renderCurrentQuestion();
     }
-}
-
-function showFeedback(correct) {
-    const el = document.getElementById('feedback-text');
-    el.className = 'feedback-text ' + (correct ? 'correct' : 'wrong');
-    el.textContent = correct ? '✓ ¡Correcto!' : '✗ Incorrecto';
 }
 
 // ═══════════════════════════════════════════════
@@ -1002,10 +1003,15 @@ function escapeHtml(str) {
 }
 
 async function clearHistory() {
-    if (!confirm('¿Borrar todo el historial de respuestas? (Las preguntas se conservan)')) return;
-    await db.stats.clear();
-    await renderHistory();
-    await refreshHome();
+    showModal("¿Quieres borrar todo el historial de respuestas? (Las preguntas se conservan)", {
+        confirmText: 'Borrar el historial',
+        cancelText: 'Cancelar',
+        onConfirm: async () => {
+            await db.stats.clear();
+            await renderHistory();
+            await refreshHome();
+        }
+    });
 }
 
 // ═══════════════════════════════════════════════
@@ -1124,11 +1130,52 @@ function initServiceWorker() {
 function lanzarAvisoActualizacion() {
     // Usamos un pequeño delay para no interrumpir si la app acaba de abrirse
     setTimeout(() => {
-        const mensaje = "🚀 ¡Hay una nueva versión disponible con cambios o nuevas preguntas! \n\n ¿Quieres actualizar ahora?";
-        if (confirm(mensaje)) {
-            window.location.reload();
-        }
+        const msg = "🚀 ¡Hay una nueva versión disponible con cambios o nuevas preguntas! \n\n ¿Quieres actualizar ahora?";
+        showModal(msg, {
+            confirmText: 'Sí',
+            cancelText: 'No',
+            onConfirm: () => window.location.reload()
+        });
     }, 1000);
+}
+
+// ── MODAL (sustituye confirm()) ──────────────────────────────
+function showModal(msg, { onConfirm, onCancel, confirmText = 'Aceptar', cancelText = 'Cancelar' } = {}) {
+    const overlay = document.getElementById('modal-overlay');
+    const msgEl = document.getElementById('modal-msg');
+    const confirmBtn = document.getElementById('modal-confirm');
+    const cancelBtn = document.getElementById('modal-cancel');
+
+    msgEl.textContent = msg;
+    confirmBtn.textContent = confirmText;
+    cancelBtn.textContent = cancelText;
+
+    overlay.style.display = 'flex';
+
+    // Limpiar listeners anteriores (clonar para evitar acumulación)
+    const newConfirm = confirmBtn.cloneNode(true);
+    const newCancel = cancelBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+    newConfirm.addEventListener('click', () => {
+        overlay.style.display = 'none';
+        onConfirm?.();
+    });
+    newCancel.addEventListener('click', () => {
+        overlay.style.display = 'none';
+        onCancel?.();
+    });
+}
+
+// ── TOAST (sustituye alert() cuando no se necesita respuesta) ──
+let toastTimer = null;
+function showToast(msg, duration = 2500) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('visible'), duration);
 }
 
 // ═══════════════════════════════════════════════

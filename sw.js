@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opos-v3';
+const CACHE_NAME = 'opos-v4';
 const ASSETS = [
     './',
     './index.html',
@@ -26,13 +26,12 @@ self.addEventListener('activate', e => {
     e.waitUntil(
         caches.keys()
             .then(keys => Promise.all(
-                keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null)
+                keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
             ))
             .then(() => self.clients.claim())
     );
 });
 
-// Estrategia: network-first con fallback a caché (tu elección previa)
 self.addEventListener('fetch', e => {
     if (!e.request.url.startsWith(self.location.origin)) return;
     e.respondWith(

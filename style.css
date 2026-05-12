@@ -478,6 +478,30 @@ button * {
 .option.show-correct .option-letter { background: var(--correct); border-color: var(--correct); color: #fff; }
 .option-text { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.45; }
 
+.selected-exam {
+    background: var(--accent-dim) !important;
+    border: 2px solid var(--accent) !important;
+    color: white !important;
+}
+
+.nav-btn {
+    background: #333;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}
+
+.finish-btn {
+    font-weight: bold;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
 .answer-footer {
     padding: 16px 20px; border-top: 1px solid var(--border);
     flex-shrink: 0; background: var(--bg);

@@ -1096,33 +1096,34 @@ function showScreen(id) {
  * Gestiona el registro del SW y la detección de actualizaciones
  */
 function initServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').then(reg => {
+    if (!('serviceWorker' in navigator)) return;
+        
+        window.addEventListener('load', async () => {
+                try {
+                        const reg = await navigator.serviceWorker.register('./sw.js', {
+                updateViaCache: 'none' // ← siempre busca sw.js en el servidor
+            });
+                        // Se dispara cuando el nuevo SW toma el control → recarga
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                const enEstudio = document.querySelector('#study.active');
+                if (enEstudio) {
+                    showToast('🚀 Actualización lista. Se aplicará al volver al inicio.');
+                } else {
+                    window.location.reload();
+                }
+            });
 
-                // A. Escuchar si se encuentra un SW nuevo (en segundo plano)
-                reg.addEventListener('updatefound', () => {
-                    const newWorker = reg.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        // Si el nuevo SW está instalado pero hay un controlador activo, 
-                        // significa que es una actualización, no la primera instalación.
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            lanzarAvisoActualizacion();
-                        }
-                    });
-                });
+            // Fuerza chequeo al volver a primer plano (clave en iOS)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    reg.update();
+                }
+            });
 
-                // B. Forzar chequeo cuando la app vuelve a primer plano (Crucial para iOS)
-                document.addEventListener("visibilitychange", () => {
-                    if (document.visibilityState === 'visible') {
-                        reg.update();
-                        console.log("🔍 PWA visible: Buscando actualizaciones en el servidor...");
-                    }
-                });
-
-            }).catch(err => console.log("SW error:", err));
-        });
-    }
+        } catch (err) {
+            console.error('SW error:', err);
+        }
+    });
 }
 
 /**

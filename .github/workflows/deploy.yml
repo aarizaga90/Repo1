@@ -1,0 +1,22 @@
+name: Deploy OposTest
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Actualizar versión de caché automáticamente
+        run: |
+          TIMESTAMP=$(date +%s)
+          sed -i "s/const CACHE_NAME = 'opos-[^']*'/const CACHE_NAME = 'opos-${TIMESTAMP}'/" sw.js
+
+      - name: Publicar en GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./

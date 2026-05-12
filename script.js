@@ -870,6 +870,7 @@ async function prepareNextQuestion() {
         session.nextBuffer = await getSmartNextQuestion();
     } catch (e) {
         session.nextBuffer = null;
+            console.log("Error localizando la siguiente pregunta");
     }
 }
 

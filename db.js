@@ -17,7 +17,8 @@ db.version(2).stores({
     console.log("Migrando base de datos a v2...");
     // Si la estructura de la clave primaria cambia y da error, 
     // a veces es necesario limpiar la tabla en el proceso
-    return tx.table("preguntas").clear();
+    await tx.table("preguntas").clear();
+    await tx.table("stats").clear();
 });
 
 db.open().catch("UpgradeError", async err => {

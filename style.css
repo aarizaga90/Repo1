@@ -4,7 +4,7 @@
     --surface2: #242838;
     --border: #2e3347;
     --text: #e8eaf0;
-    --muted: #7a7f96;
+    --muted: #9299b0;
     --accent: #f5a623;
     --accent-dim: rgba(245,166,35,0.12);
     --correct: #22c55e;
@@ -14,6 +14,9 @@
     --radius: 16px;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --z-sticky: 10;
+    --z-fab: 100;
+    --z-overlay: 200;
 }
 
 @keyframes shine {
@@ -111,11 +114,6 @@ html, body {
     margin: 0 5px;
 }
 
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
 /* Acordeón de extras */
 .extra-modes-details {
     margin-bottom: 20px;
@@ -142,11 +140,6 @@ html, body {
     padding: 10px;
     font-size: 12px;
     flex-direction: column;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 /* ── SCREENS ── */
@@ -261,7 +254,6 @@ button * {
 .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); margin-bottom: 12px; }
 .btn-ghost { background: transparent; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); }
 
-.mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .mode-btn {
     padding: 14px 12px; border-radius: var(--radius); border: 1px solid var(--border);
     background: var(--surface); cursor: pointer; text-align: center;
@@ -272,8 +264,6 @@ button * {
 .mode-icon { font-size: 22px; margin-bottom: 4px; }
 .mode-label { font-size: 13px; font-weight: 700; color: var(--text); }
 .mode-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-.home-section-title { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; margin-top: 20px; }
 
 /* Contenedor del formulario de edición */
 .edit-form {
@@ -324,9 +314,16 @@ button * {
     box-shadow: 0 2px 8px rgba(245, 166, 35, 0.3);
 }
 
-/* Espaciado entre opciones de respuesta */
+/* Ajuste de las opciones */
 .edit-option-row {
-    margin-bottom: 15px; /* ¡El hueco que necesitabas! */
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--surface2);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 15px;
     transition: border-color 0.2s;
 }
 
@@ -344,17 +341,6 @@ button * {
     resize: vertical;  /* Permite al usuario estirarlo si quiere */
     font-size: 16px !important; /* Evita el zoom automático de iOS en inputs */
     line-height: 1.4;
-}
-
-/* Ajuste de las opciones */
-.edit-option-row {
-    display: flex;
-    align-items: flex-start; /* Alinea el radio button arriba si el texto es largo */
-    gap: 10px;
-    background: var(--surface2);
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
 }
 
 .edit-opt-input {
@@ -419,9 +405,6 @@ button * {
 
 /* El botón de editar propiamente dicho */
 .btn-edit {
-    position: static;
-    top: 10px;
-    right: 10px;
     background: rgba(245, 166, 35, 0.1); /* Color acento muy suave de fondo */
     color: var(--accent); /* Tu color naranja/amarillo */
     border: 1px solid var(--accent);
@@ -454,7 +437,7 @@ button * {
     color: var(--text); margin-bottom: 24px;
 }
 
-.options-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 16px; }
+.options-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 120px; }
 .option {
     display: flex; align-items: flex-start; gap: 12px;
     background: var(--surface); border: 1.5px solid var(--border);
@@ -532,7 +515,10 @@ button * {
 
 /* ── HISTORY ── */
 #history { padding: 20px 20px 24px; }
-.hist-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+.hist-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; position: sticky; top: 0;
+    background: var(--bg);
+    z-index: 10;
+    padding-bottom: 12px; }
 .hist-title { font-family: 'Playfair Display', serif; font-size: 22px; flex: 1; }
 .hist-list { display: flex; flex-direction: column; gap: 10px; }
 .hist-item {
@@ -550,7 +536,8 @@ button * {
 /* ── IMPORT ── */
 #import-overlay {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-    z-index: 100; align-items: flex-end; padding-bottom: var(--safe-bottom);
+    align-items: flex-end; padding-bottom: var(--safe-bottom);
+    z-index: var(--z-overlay);
 }
 #import-overlay.open { display: flex; }
 .import-sheet {
@@ -653,6 +640,6 @@ button * {
     border: none;
     font-size: 20px;
     display: none; /* Se activa con JS */
-    z-index: 100;
+    z-index: var(--z-fab);
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }

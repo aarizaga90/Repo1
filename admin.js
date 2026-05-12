@@ -28,15 +28,15 @@ async function initAdminList() {
         container.innerHTML = '';
         currentOffset = 0;
 
-        // Escuchador de clics (Delegación)
-        container.addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-edit');
-            if (btn) {
-                const id = parseInt(btn.dataset.id);
-                abrirEditorCompleto(id);
-            }
-        });
-
+        // Escuchador de clics (Delegación). Primero guard para evitar re-crear
+        if (!container.dataset.hooked) {
+            container.addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-edit');
+                if (btn) abrirEditorCompleto(parseInt(btn.dataset.id));
+            });
+            container.dataset.hooked = 'true';
+        }
+        
         renderMoreQuestions();
         setupSearchListener();
         setupScrollTop();
@@ -113,12 +113,11 @@ function renderMoreQuestions() {
                 <span class="q-code">${code}</span>
                 <button class="btn-edit" data-id="${q.id}">Editar</button>
             </div>
-            <div class="q-admin-text">${q.pregunta}</div>
+            <div class="q-admin-text"></div>
         `;
+        div.querySelector('.q-admin-text').textContent = q.pregunta;
         fragment.appendChild(div);
-        div.querySelector('.btn-edit').addEventListener('click', () => {
-            abrirEditorCompleto(q.id)
-        });
+
     });
     
     container.appendChild(fragment);
@@ -189,9 +188,23 @@ async function abrirEditorCompleto(id) {
 
 
 async function guardarCambios(id) {
-    const nuevoTexto = document.getElementById('edit-text').value;
-    const nuevasOpciones = Array.from(document.querySelectorAll('.edit-opt-input')).map(input => input.value);
-    const nuevaCorrecta = parseInt(document.querySelector('input[name="correcta"]:checked').value);
+    const nuevoTexto = document.getElementById('edit-text').value.trim();
+
+    // Scope al formulario para evitar capturar inputs de otras pantallas
+    const optsContainer = document.getElementById('edit-options-list');
+    const nuevasOpciones = Array.from(
+        optsContainer.querySelectorAll('.edit-opt-input')
+    ).map(input => input.value);
+
+    // Null check: si ningún radio está marcado, no guardar
+    const checkedRadio = optsContainer.querySelector('input[name="correcta"]:checked');
+    if (!checkedRadio) {
+        // Sustituir por toast cuando esté implementado (ver ME1)
+        alert('Marca cuál es la respuesta correcta antes de guardar.');
+        return;
+    }
+    
+    const nuevaCorrecta = parseInt(checkedRadio.value);
 
     await db.preguntas.update(id, {
         pregunta: nuevoTexto,
@@ -199,7 +212,7 @@ async function guardarCambios(id) {
         correcta: nuevaCorrecta
     });
 
-    alert("¡Pregunta actualizada!");
-    initAdminList(); // Refresca la lista
+    await initAdminList();
     showScreen('admin-list');
+    showToast('Pregunta actualizada ✓');
 }

@@ -129,9 +129,9 @@ if (finishEarlyBtn) {
     });
 }
 
-// 2. Modificar la flecha de atrás para que no borre todo sin avisar
+// 2. Modificar la flecha de atrás para que no borre t.odo sin avisar
 document.addEventListener('click', (e) => {
-const btn = e.target.closest('.back-to-home, .back-btn');
+const btn = e.target.closest('.back-to-home');
 if(!btn) return;
 
         // Si estamos en la pantalla de estudio y hay preguntas respondidas...
@@ -353,8 +353,10 @@ async function refreshHome() {
     document.getElementById('prog-fill').style.width = total > 0 ? (done / total * 100) + '%' : '0%';
 
     const rangeEnd = document.getElementById('range-end');
-    rangeEnd.value = total;
-    rangeEnd.max = total;
+    if (rangeEnd) {
+        rangeEnd.value = total;
+        rangeEnd.max = total;
+    }
 
     const emptyEl = document.getElementById('empty-home');
     const actionsEl = document.getElementById('home-actions');
@@ -403,6 +405,8 @@ async function startStudy() {
         nextBuffer: null,
         lastId: null
     };
+
+    answered = false;
 
     if (selectedMode === 'smart') {
         console.log("🧠 Entrando en lógica Smart...");
@@ -482,7 +486,7 @@ async function startStudy() {
     ]);
     const statsMap = new Map(allStats.map(s => [s.id, s]));
 
-    let pool = await db.preguntas.toArray();
+    let pool = allQuestions;
 
     // 2. APLICAR FILTRO DE TEMARIO
     if (selectedTemario !== 'todos') {
@@ -528,9 +532,6 @@ async function startStudy() {
     
     // SEGUNDO: Mezclamos SOLO ese rango
     pool = pool.sort(() => Math.random() - 0.5);
-
-    } else if (selectedMode === 'wrong' || selectedMode === 'unseen') {
-        pool = pool.slice().sort(() => Math.random() - 0.5);
     }
 
     if (pool.length === 0) {
@@ -554,16 +555,17 @@ async function startStudy() {
 // ═══════════════════════════════════════════════
 function renderCurrentQuestion() {
     const q = session.currentQuestion;
-    const container = document.getElementById('question-container');
+    const container = document.getElementById('question-scroll');
     if (!container || !q) return;
 
-    const total = isSmart ? SMART_SESSION_LENGTH : session.queue.length;
-    const esInfinito = total === Infinity;
+    answered = false;
 
-    const code = getQuestionCode(q);
     const idx = session.index;
     const isSmart = session.mode === 'smart';
     const isExam = session.mode === 'exam';
+    const total = isSmart ? SMART_SESSION_LENGTH : session.queue.length;
+    const esInfinito = total === Infinity;
+    const code = getQuestionCode(q);
 
     // 1. Actualización de contadores y textos
     document.getElementById('q-num').textContent = esInfinito
@@ -635,13 +637,13 @@ function updateExamNavigation(idx, total) {
 
     navContainer.style.display = 'flex';
     navContainer.innerHTML = `
-        <button onclick="prevQuestion()" ${idx === 0 ? 'disabled' : ''} class="btn-nav">⬅️ Anterior</button>
+        <button onclick="examPrevQuestion()" ${idx === 0 ? 'disabled' : ''} class="btn-nav">⬅️ Anterior</button>
         <button onclick="confirmFinishExam()" class="btn-finish">Entregar Examen</button>
-        <button onclick="nextQuestion()" ${idx === total - 1 ? 'disabled' : ''} class="btn-nav">Siguiente ➡️</button>
+        <button onclick="examNextQuestion()" ${idx === total - 1 ? 'disabled' : ''} class="btn-nav">Siguiente ➡️</button>
     `;
 }
 
-function nextQuestion() {
+function examNextQuestion() {
     if (session.index < session.queue.length - 1) {
         session.index++;
         session.currentQuestion = session.queue[session.index];
@@ -652,7 +654,7 @@ function nextQuestion() {
     }
 }
 
-function prevQuestion() {
+function examPrevQuestion() {
     if (session.index > 0) {
         session.index--;
         session.currentQuestion = session.queue[session.index];
@@ -716,13 +718,13 @@ async function selectAnswer(chosen) {
     // SI ES MODO EXAMEN: Guardamos y pasamos
     if (session.isExam) {
         // --- LÓGICA DE ANULACIÓN ---
-        if (session.answers[q.id] === selectedIndex) {
+        if (session.answers[q.id] === chosen) {
             // Si pincha la que ya está marcada, la borramos del mapa
             delete session.answers[q.id];
             console.log(`Anulada respuesta de la pregunta ${q.id}`);
         } else {
             // Si pincha una nueva (o no había nada), guardamos
-            session.answers[q.id] = selectedIndex;
+            session.answers[q.id] = chosen;
         }
 
         // Repintamos la pregunta actual para que los botones reflejen el cambio
@@ -1018,10 +1020,6 @@ function openImport() {
 
 function closeImport() {
     document.getElementById('import-overlay').classList.remove('open');
-}
-
-function closeImportOutside(e) {
-    if (e.target === document.getElementById('import-overlay')) closeImport();
 }
 
 async function handleFileImport(e) {

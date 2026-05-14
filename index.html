@@ -2,30 +2,31 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+
+    <!-- PWA / iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="OposTest">
     <meta name="theme-color" content="#f5a623">
-    <link rel="apple-touch-icon" href="icons/icon-180.png">
-
-    <title>OposTest - Prepara tu oposición</title>
-    <meta name="description" content="OposTest - Plataforma para preparar oposiciones con preguntas y estadísticas detalladas.">
-    <meta name="keywords" content="oposiciones, estudio, preguntas, test, Osakidetza">
-
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
     <link rel="manifest" href="./manifest.json">
 
+    <!-- SEO -->
+    <title>OposTest — Prepara tu oposición</title>
+    <meta name="description" content="Plataforma offline para preparar oposiciones con preguntas, test y estadísticas.">
+
+    <!-- CSP -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';">
+
+    <!-- Fuentes -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 
+    <!-- Scripts -->
     <script src="dexie.js" defer></script>
     <script src="db.js" defer></script>
     <script src="preguntas.js" defer></script>
@@ -35,6 +36,7 @@
 <body>
 <div id="app">
 
+    <!-- ── HOME ──────────────────────────────────────────────── -->
     <main id="home" class="screen active">
         <header class="home-header">
             <div class="home-logo">Osakidetza · 2026</div>
@@ -42,9 +44,18 @@
         </header>
 
         <section class="stats-row" aria-label="Estadísticas de progreso">
-            <div class="stat-card"><div class="val" id="stat-total">0</div><div class="lbl">Pregs.</div></div>
-            <div class="stat-card"><div class="val" id="stat-pct">—</div><div class="lbl">Acierto</div></div>
-            <div class="stat-card"><div class="val" id="stat-done">0</div><div class="lbl">Hechas</div></div>
+            <div class="stat-card">
+                <div class="val" id="stat-total">0</div>
+                <div class="lbl">Pregs.</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" id="stat-pct">—</div>
+                <div class="lbl">Acierto</div>
+            </div>
+            <div class="stat-card">
+                <div class="val" id="stat-done">0</div>
+                <div class="lbl">Hechas</div>
+            </div>
         </section>
 
         <section class="progress-wrap" aria-label="Barra de progreso general">
@@ -95,20 +106,20 @@
             </details>
         </div>
 
-            <button type="button" id="start-btn" class="btn btn-primary btn-start-session">▶ Empezar sesión</button>
-            <button type="button" id="history-btn" class="btn btn-secondary">📊 Historial de respuestas</button>
-            <button type="button" id="admin-btn" class="btn btn-secondary" style="margin-top: 8px;">⚙️ Gestionar preguntas</button>
-        
-        <button class="btn btn-ghost" id="open-import-btn">⬆ Importar preguntas (JSON)</button>
+        <button type="button" id="start-btn" class="btn btn-primary btn-start-session">▶ Empezar sesión</button>
+        <button type="button" id="history-btn" class="btn btn-secondary">📊 Historial de respuestas</button>
+        <button type="button" id="admin-btn" class="btn btn-secondary">⚙️ Gestionar preguntas</button>
+        <button type="button" id="open-import-btn" class="btn btn-ghost">⬆ Importar preguntas (JSON)</button>
     </main>
 
+    <!-- ── STUDY ──────────────────────────────────────────────── -->
     <section id="study" class="screen" aria-labelledby="prog-current">
         <header class="study-header">
             <button class="back-btn back-to-home" aria-label="Volver al inicio">←</button>
             <div class="study-prog-wrap">
                 <div class="study-prog-text">
                     <span id="prog-current" aria-live="polite">Pregunta 1</span>
-                    <span id="timer" style="color: var(--accent); font-family: monospace; font-size: 14px;">00:00</span>
+                    <span id="timer" class="study-timer">00:00</span>
                     <span id="prog-of">de 0</span>
                 </div>
                 <div class="study-prog-bar">
@@ -123,22 +134,19 @@
             <div class="options-list" id="options-list" role="group" aria-label="Opciones de respuesta"></div>
         </div>
 
-        <!-- Footer modo normal (existente) -->
+        <!-- Footer: modo estudio (Finalizar + Siguiente) -->
         <footer class="answer-footer" id="answer-footer" style="display:none">
-            <div class="feedback-text" id="feedback-text"></div>
-            <div style="display: flex; gap: 10px; width: 100%;">
-                <button class="btn btn-secondary" id="finish-early-btn"
-                        style="flex:1; background:rgba(255,255,255,0.05);">Finalizar</button>
+            <div class="footer-actions">
+                <button class="btn btn-secondary" id="finish-early-btn" style="flex:1; background:rgba(255,255,255,0.05);">Finalizar</button>
                 <button class="next-btn" id="next-btn" style="flex:2;">Siguiente →</button>
             </div>
         </footer>
 
-        <!-- Footer modo examen (nuevo) -->
-        <footer class="answer-footer" id="exam-footer" style="display:none">
-            <!-- Contenido inyectado por updateExamNavigation() -->
-        </footer>
+        <!-- Footer: modo examen (inyectado por JS) -->
+        <footer class="answer-footer" id="exam-footer" style="display:none"></footer>
     </section>
 
+    <!-- ── RESULTS ────────────────────────────────────────────── -->
     <section id="results" class="screen" aria-labelledby="res-title">
         <div class="result-emoji" id="res-emoji" aria-hidden="true">🎉</div>
         <h2 class="result-title" id="res-title">¡Sesión completada!</h2>
@@ -147,66 +155,82 @@
             <div class="score-big" id="res-pct">0%</div>
             <div class="score-label">Tasa de acierto</div>
             <div class="score-detail">
-                <div class="score-item c"><div class="val" id="res-correct">0</div><div class="lbl">Correctas</div></div>
-                <div class="score-item w"><div class="val" id="res-wrong">0</div><div class="lbl">Incorrectas</div></div>
+                <div class="score-item c">
+                    <div class="val" id="res-correct">0</div>
+                    <div class="lbl">Correctas</div>
+                </div>
+                <div class="score-item w">
+                    <div class="val" id="res-wrong">0</div>
+                    <div class="lbl">Incorrectas</div>
+                </div>
             </div>
             <div class="score-detail">
                 <div class="score-item">
-                <span id="res-time" class="val">00:00</span>
-                <span class="lbl">Tiempo</span>
+                    <span id="res-time" class="val">00:00</span>
+                    <span class="lbl">Tiempo</span>
                 </div>
                 <div class="score-item">
-                <span id="res-avg" class="val">0s</span>
-                <span class="lbl">Media</span>
+                    <span id="res-avg" class="val">0s</span>
+                    <span class="lbl">Media</span>
                 </div>
             </div>
         </div>
+        <!-- Acción primaria primero, secundarias después -->
         <button class="btn btn-primary" id="finish-btn">Volver al inicio</button>
-        <button class="btn btn-secondary" id="retry-btn" style="margin-top:8px">Repetir sesión</button>
+        <button class="btn btn-secondary" id="review-btn" style="display:none">🔍 Revisar fallos</button>
+        <button class="btn btn-secondary" id="retry-btn">Repetir sesión</button>
     </section>
 
+    <!-- ── HISTORY ────────────────────────────────────────────── -->
     <section id="history" class="screen" aria-labelledby="hist-title">
         <header class="hist-header">
             <button class="back-btn back-to-home" aria-label="Volver atrás">←</button>
             <h2 id="hist-title" class="hist-title">Historial</h2>
-            <button id="clear-history-btn" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:700">Borrar</button>
+            <button id="clear-history-btn" class="btn-link">Borrar</button>
         </header>
         <div id="hist-list" class="hist-list"></div>
     </section>
+
+    <!-- ── REVIEW ─────────────────────────────────────────────── -->
+    <section id="review" class="screen" aria-labelledby="review-title">
+        <header class="hist-header">
+            <button class="back-btn back-to-results" aria-label="Volver a resultados">←</button>
+            <h2 id="review-title" class="hist-title">Revisión de fallos</h2>
+            <span id="review-count" class="screen-counter"></span>
+        </header>
+        <div id="review-list" class="review-list"></div>
+    </section>
+
+    <!-- ── ADMIN ──────────────────────────────────────────────── -->
     <section id="admin-list" class="screen">
-    <header class="hist-header">
-        <button class="back-btn back-to-home" aria-label="Volver al inicio">←</button>
-        <h2 class="hist-title">Banco de Preguntas</h2>
-    </header>
-    
-    <div class="search-bar">
-        <input type="text" id="search-input" placeholder="Buscar por texto o número...">
-        <div id="search-count" class="search-count">Cargando preguntas...</div>
-    </div>
-
-    <div id="questions-list-container" class="q-list">
+        <header class="hist-header">
+            <button class="back-btn back-to-home" aria-label="Volver al inicio">←</button>
+            <h2 class="hist-title">Banco de Preguntas</h2>
+        </header>
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Buscar por texto o número...">
+            <div id="search-count" class="search-count">Cargando preguntas...</div>
         </div>
-</section>
+        <div id="questions-list-container" class="q-list"></div>
+    </section>
 
-<section id="edit-screen" class="screen">
-    <div class="edit-header">
-        <div class="edit-header-left">
-        <button class="back-btn" id="cancel-edit">✕</button>
-        <h2 class="edit-header-title">Editar Pregunta</h2>
-        </div>
-        <button class="btn-save" id="save-edit">GUARDAR</button>
-    </div>
-
-    <div class="edit-form" style="padding:20px;">
-        <label style="color:var(--muted); font-size:12px;">ENUNCIADO</label>
-        <textarea id="edit-text" style="width:100%; background:var(--surface2); color:white; border:1px solid var(--border); border-radius:8px; padding:10px; margin-top:8px; min-height:100px; font-family:inherit;"></textarea>
-        
-        <div id="edit-options-list" style="margin-top:20px;">
+    <!-- ── EDIT ───────────────────────────────────────────────── -->
+    <section id="edit-screen" class="screen">
+        <div class="edit-header">
+            <div class="edit-header-left">
+                <button class="back-btn" id="cancel-edit">✕</button>
+                <h2 class="edit-header-title">Editar Pregunta</h2>
             </div>
-    </div>
-</section>
+            <button class="btn-save" id="save-edit">GUARDAR</button>
+        </div>
+        <div class="edit-form">
+            <label class="edit-label">ENUNCIADO</label>
+            <textarea id="edit-text" class="edit-textarea"></textarea>
+            <div id="edit-options-list" class="edit-options"></div>
+        </div>
+    </section>
 
-    <!-- Modal de confirmación -->
+    <!-- ── MODAL ──────────────────────────────────────────────── -->
     <div id="modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" style="display:none">
         <div class="modal-box">
             <p class="modal-msg" id="modal-msg"></p>
@@ -217,35 +241,36 @@
         </div>
     </div>
 
-    <!-- Toast informativo -->
+    <!-- ── TOAST ──────────────────────────────────────────────── -->
     <div id="toast" class="toast" aria-live="polite"></div>
-    
-    <div id="import-overlay" role="dialog" aria-modal="true" aria-labelledby="import-title">
-    <div class="import-sheet">
-        <div class="sheet-handle"></div>
-        <h2 class="import-title" id="import-title">Importar preguntas</h2>
-        <p class="import-sub">Sube un fichero <strong>.json</strong>. Las preguntas existentes se <strong>reemplazarán</strong>.</p>
-        <pre class="import-format" aria-hidden="true">
-[
- {
-  "id": 1,
-  "pregunta": "¿...?",
-  "opciones": ["A", "B", "C", "D"],
-  "correcta": 0
- }
-]
-    </pre>
-        <label class="file-drop">
-            <input type="file" id="file-input" accept=".json" aria-label="Seleccionar archivo JSON">
-            <div class="file-drop-icon">📂</div>
-            <div class="file-drop-text">Toca para seleccionar archivo</div>
-            <div class="file-drop-sub">Formato JSON · hasta 700 preguntas</div>
-        </label>
-        <div class="import-status" id="import-status" aria-live="polite"></div>
-        <button class="btn btn-ghost" id="close-import-btn" style="margin-top:12px">Cancelar</button>
-    </div>
-</div>
-</div>
 
+    <!-- ── IMPORT ─────────────────────────────────────────────── -->
+    <div id="import-overlay" role="dialog" aria-modal="true" aria-labelledby="import-title">
+        <div class="import-sheet">
+            <div class="sheet-handle"></div>
+            <h2 class="import-title" id="import-title">Importar preguntas</h2>
+            <p class="import-sub">Sube un fichero <strong>.json</strong>. Las preguntas existentes se <strong>reemplazarán</strong>.</p>
+            <pre class="import-format" aria-hidden="true">
+[
+  {
+    "pregunta": "¿...?",
+    "opciones": ["A", "B", "C", "D"],
+    "correcta": 0,
+    "temario": "común",
+    "numero_temario": 1
+  }
+]</pre>
+            <label class="file-drop">
+                <input type="file" id="file-input" accept=".json" aria-label="Seleccionar archivo JSON">
+                <div class="file-drop-icon">📂</div>
+                <div class="file-drop-text">Toca para seleccionar archivo</div>
+                <div class="file-drop-sub">Formato JSON</div>
+            </label>
+            <div class="import-status" id="import-status" aria-live="polite"></div>
+            <button class="btn btn-ghost" id="close-import-btn">Cancelar</button>
+        </div>
+    </div>
+
+</div><!-- /#app -->
 </body>
 </html>

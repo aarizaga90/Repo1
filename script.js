@@ -131,6 +131,19 @@ if (finishEarlyBtn) {
     });
 }
 
+// Botón "Revisar fallos"
+    document.getElementById('review-btn')?.addEventListener('click', () => {
+        renderReview();
+        showScreen('review');
+    });
+
+// Back desde review → volver a resultados
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.back-to-results')) {
+            showScreen('results');
+        }
+    });
+
 // 2. Modificar la flecha de atrás para que no borre t.odo sin avisar
 document.addEventListener('click', (e) => {
 const btn = e.target.closest('.back-to-home');
@@ -251,26 +264,20 @@ async function selectModeSecure(el, mode, target) {
         },
         'exam': {
             desc: "Simulacro oficial con tiempo limitado y corrección al final.",
-            html: `
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="display: flex; gap: 10px; background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px;">
-            <div style="flex: 1;">
-                <label style="font-size: 11px; color: var(--muted);">COMUNES</label>
-                <input type="number" id="exam-comun" value="20" style="width: 100%; background: transparent; border: 1px solid #444; color: var(--accent); text-align: center; border-radius: 4px;">
-            </div>
-            <div style="flex: 1;">
-                <label style="font-size: 11px; color: var(--muted);">ESPECÍFICAS</label>
-                <input type="number" id="exam-especifico" value="40" style="width: 100%; background: transparent; border: 1px solid #444; color: var(--accent); text-align: center; border-radius: 4px;">
-            </div>
-            <div style="flex: 1;">
-                <label style="font-size: 11px; color: var(--muted);">MINUTOS</label>
-                <input type="number" id="exam-time" value="60" style="width: 100%; background: transparent; border: 1px solid #444; color: var(--accent); text-align: center; border-radius: 4px;">
-            </div>
-        </div>
-        <p style="font-size: 11px; color: #ff9f43;">⚠️ Las respuestas se corregirán al terminar el examen.</p>
+            html:`
+                <div style="display:flex; gap:10px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; align-items:flex-end;">
+                <div style="flex:1;">
+                <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">MINUTOS</label>
+    <input type="number" id="exam-time" value="75" min="10" max="180"
+           style="width:100%; background:transparent; border:1px solid #444;
+                       color:var(--accent); text-align:center; border-radius:4px;
+                       padding:8px; font-size:16px;">
     </div>
-    `
-        },
+</div>
+    <p style="font-size:11px; color:#ff9f43; margin-top:8px;">
+        ⚠️ Distribución proporcional automática · Bloque 450-500 agrupado al final · Sin corrección inmediata.
+    </p>`
+},
         'smart': {
             desc: "Prioridad a fallos y nuevas.",
             html: `
@@ -452,25 +459,79 @@ async function startSmartSession() {
 //  EXAMEN
 // ═══════════════════════════════════════════════
 async function startExamSession() {
-    const numComun    = parseInt(document.getElementById('exam-comun')?.value)  || 0;
-    const numEspec    = parseInt(document.getElementById('exam-especifico')?.value) || 0;
-    const examMinutes = parseInt(document.getElementById('exam-time')?.value)   || 60;
+    const examMinutes  = parseInt(document.getElementById('exam-time')?.value) || 100;
+    const TARGET_TOTAL = 100;
+    const MIN_TRAMO    = 10; // mínimo garantizado del bloque 450-500
 
-    let poolComun = await db.preguntas.where('temario').equals('común').toArray();
-    let poolEspec = await db.preguntas.where('temario').equals('específico').toArray();
-
+    // ── 1. Cargar y filtrar null-correcta ──────────────────────
+    const [allComun, allEspec] = await Promise.all([
+        db.preguntas.where('temario').equals('común').toArray(),
+        db.preguntas.where('temario').equals('específico').toArray()
+    ]);
+    
     // Filtrar preguntas sin respuesta correcta
     const tieneRespuesta = q => q.correcta !== null && q.correcta !== undefined;
-    poolComun = poolComun.filter(tieneRespuesta).sort(() => Math.random() - 0.5).slice(0, numComun);
-    poolEspec = poolEspec.filter(tieneRespuesta).sort(() => Math.random() - 0.5).slice(0, numEspec);
+    const comunValid = allComun.filter(tieneRespuesta);
+    const especValid = allEspec.filter(tieneRespuesta);
 
-    const examPool = [...poolComun, ...poolEspec].sort(() => Math.random() - 0.5);
-    if (examPool.length === 0) { showToast("No hay preguntas disponibles"); return; }
+    if (comunValid.length + especValid.length === 0) {
+        showToast("No hay preguntas disponibles");
+        return;
+    }
+
+    // ── 2. Distribución proporcional ───────────────────────────
+    const grandTotal = comunValid.length + especValid.length;
+    const numComun = Math.round(TARGET_TOTAL * comunValid.length / grandTotal);
+    const numEspec = TARGET_TOTAL - numComun;
+
+    // ── 3. Bloque preguntas prácticas del específico ───────────────────────
+    const tramo450 = especValid
+        .filter(q => q.numero_temario >= 450 && q.numero_temario <= 500)
+        .sort(() => Math.random() - 0.5); // mezcla antes de seleccionar
+
+    const selectedTramo = tramo450
+        .slice(0, Math.min(MIN_TRAMO, tramo450.length))
+        .sort((a, b) => a.numero_temario - b.numero_temario); // ordenar para agrupar enunciados compartidos
+
+    // ── 4. Resto del específico (excluyendo el tramo 450-500) ──
+    const restoEspec = especValid
+        .filter(q => q.numero_temario < 450)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, numEspec - selectedTramo.length);
+
+    // ── 5. Común — aleatorio puro ──────────────────────────────
+    const selectedComun = comunValid
+        .sort(() => Math.random() - 0.5)
+        .slice(0, numComun);
+
+    // ── 6. Construir pool final ────────────────────────────────
+    // [común + específico base] en orden aleatorio
+    // + [bloque 450-500] al final, ordenado por número (enunciados agrupados)
+    const poolBase = [...selectedComun, ...restoEspec]
+        .sort(() => Math.random() - 0.5);
+
+    const examPool = [...poolBase, ...selectedTramo];
+
+    if (examPool.length === 0) {
+        showToast("No hay preguntas disponibles");
+        return;
+    }
+
+    console.log(
+        `📝 Examen: ${selectedComun.length} comunes + ` +
+        `${restoEspec.length} específicas + ` +
+        `${selectedTramo.length} del bloque 450-500 = ` +
+        `${examPool.length} preguntas`
+    );
 
     Object.assign(session, {
-        mode: 'exam', queue: examPool, isExam: true,
-        answers: {}, timeLeft: examMinutes * 60,
-        originalTime: examMinutes * 60, currentQuestion: examPool[0]
+        mode: 'exam',
+        queue: examPool,
+        isExam: true,
+        answers: {},
+        timeLeft: examMinutes * 60,
+        originalTime: examMinutes * 60,
+        currentQuestion: examPool[0]
     });
 
     startExamTimer();
@@ -706,6 +767,11 @@ async function finishExam() {
         } else {
             fallos++;
             await recordAnswer(q.id, false);
+            session.wrongAnswers.push({
+                question: q,
+                chosen: respuesta,
+                correct: q.correcta
+            });
         }
     }
 
@@ -791,6 +857,11 @@ async function selectAnswer(chosen) {
         opts[chosen].classList.add('selected-wrong');
         if (opts[correct]) opts[correct].classList.add('show-correct');
         session.wrong++;
+        session.wrongAnswers.push({
+            question: q,
+            chosen: chosen,
+            correct: correct
+        });
     }
 
     // Persistir la respuesta (estadística)
@@ -1038,7 +1109,52 @@ function showResults() {
     document.getElementById('res-wrong').textContent = session.wrong;
     document.getElementById('res-time').textContent = tiempoFormateado;
     document.getElementById('res-avg').textContent = `${media}s`;
+
+    const reviewBtn = document.getElementById('review-btn');
+    if (reviewBtn) {
+        reviewBtn.style.display =
+            session.wrongAnswers?.length > 0 ? 'block' : 'none';
+    }
+    
     showScreen('results');
+}
+
+// ═══════════════════════════════════════════════
+//  ERROR REVIEW
+// ═══════════════════════════════════════════════
+function renderReview() {
+    const list     = document.getElementById('review-list');
+    const countEl  = document.getElementById('review-count');
+    const letters  = ['A', 'B', 'C', 'D'];
+    const fallos   = session.wrongAnswers || [];
+
+    if (countEl) countEl.textContent =
+        fallos.length > 0 ? `${fallos.length} fallos` : '';
+
+    if (fallos.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state" style="margin-top:40px;">
+                <div class="empty-icon">🎉</div>
+                <div class="empty-title">Sin errores</div>
+                <div class="empty-sub">No fallaste ninguna pregunta en esta sesión</div>
+            </div>`;
+        return;
+    }
+
+    list.innerHTML = fallos.map(({ question: q, chosen, correct }, i) => `
+        <div class="review-card">
+            <div class="review-num">Fallo ${i + 1} de ${fallos.length}</div>
+            <p class="review-question">${escapeHtml(q.pregunta)}</p>
+            <div class="review-choice review-wrong">
+                <span class="option-letter">${letters[chosen]}</span>
+                <span class="review-choice-text">${escapeHtml(q.opciones[chosen])}</span>
+            </div>
+            <div class="review-choice review-correct">
+                <span class="option-letter">${letters[correct]}</span>
+                <span class="review-choice-text">${escapeHtml(q.opciones[correct])}</span>
+            </div>
+        </div>
+    `).join('');
 }
 
 // ═══════════════════════════════════════════════

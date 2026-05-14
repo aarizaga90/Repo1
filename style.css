@@ -770,3 +770,67 @@ button * {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
 }
+
+/* ── REVIEW ── */
+.review-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.review-num {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.review-question {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 14px;
+}
+
+.review-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+.review-choice-text {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text);
+}
+
+.review-wrong {
+    background: var(--wrong-dim);
+    border: 1px solid var(--wrong);
+}
+
+.review-wrong .option-letter {
+    background: var(--wrong);
+    border-color: var(--wrong);
+    color: #fff;
+}
+
+.review-correct {
+    background: var(--correct-dim);
+    border: 1px solid var(--correct);
+}
+
+.review-correct .option-letter {
+    background: var(--correct);
+    border-color: var(--correct);
+    color: #fff;
+}

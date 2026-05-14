@@ -1,30 +1,32 @@
+// ── DEBUG ──────────────────────────────────────────────────
+// true en desarrollo, false en producción
+const DEBUG = false;
+const log = (...args) => DEBUG && console.log(...args);
+
+// ── BASE DE DATOS ──────────────────────────────────────────
 const db = new Dexie('OposTest');
 
-// VERSION 1: El pasado (como estaba antes)
+// v1 → v2: clave primaria a autoincrement + índices de temario
 db.version(1).stores({
     preguntas: 'id',
     stats: 'id'
 });
 
-// VERSION 2: El cambio controlado
-// Al definir una versión superior, Dexie intenta migrar.
-// Si el cambio de clave primaria falla, usamos 'upgrade' para limpiar.
 db.version(2).stores({
     preguntas: '++id, temario, numero_temario',
     stats: 'id'
 }).upgrade(async tx => {
-    // Este código solo se ejecuta UNA VEZ al pasar de v1 a v2
-    console.log("Migrando base de datos a v2...");
-    // Si la estructura de la clave primaria cambia y da error, 
-    // a veces es necesario limpiar la tabla en el proceso
-    await tx.table("preguntas").clear();
-    await tx.table("stats").clear();
+    log('DB: migrando a v2...');
+    await tx.table('preguntas').clear();
+    await tx.table('stats').clear();
 });
 
-db.open().catch("UpgradeError", async err => {
-    // Si incluso con el upgrade falla (porque IndexedDB bloquea el cambio de PK)
-    // Forzamos el borrado y reinicio automático para el usuario
-    console.error("Cambio de clave primaria no soportado. Reiniciando esquema...");
-    await db.delete();
-    location.reload();
-});
+db.open()
+    .catch('UpgradeError', async () => {
+        console.error('DB: esquema incompatible — reiniciando...');
+        await db.delete();
+        location.reload();
+    })
+    .catch(err => {
+        console.error('DB: error al abrir —', err);
+    });

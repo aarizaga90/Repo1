@@ -2,7 +2,7 @@
   "name": "OposTest — Técnico Administración",
   "short_name": "OposTest",
   "lang": "es",
-  "description": "Repasa tus 700 preguntas de oposición sin conexión",
+  "description": "Repasa tus preguntas de oposición sin conexión",
   "scope": "./",
   "start_url": "./index.html",
   "display": "standalone",

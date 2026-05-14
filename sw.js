@@ -1,4 +1,5 @@
 const CACHE_NAME = 'opos-v4';
+
 const ASSETS = [
     './',
     './index.html',
@@ -9,11 +10,12 @@ const ASSETS = [
     './script.js',
     './admin.js',
     './dexie.js',
-    './icons/icon-512.png',
+    './icons/icon-180.png',
     './icons/icon-192.png',
-    './icons/icon-180.png'
+    './icons/icon-512.png'
 ];
 
+// Instalar: cachear todos los assets
 self.addEventListener('install', e => {
     e.waitUntil(
         caches.open(CACHE_NAME)
@@ -22,6 +24,7 @@ self.addEventListener('install', e => {
     );
 });
 
+// Activar: eliminar cachés antiguas y tomar control
 self.addEventListener('activate', e => {
     e.waitUntil(
         caches.keys()
@@ -32,22 +35,20 @@ self.addEventListener('activate', e => {
     );
 });
 
+// Fetch: cache-first con revalidación en segundo plano
 self.addEventListener('fetch', e => {
     if (!e.request.url.startsWith(self.location.origin)) return;
+
     e.respondWith(
-        caches.match(e.request).then(cachedResponse => {
-            const networkFetch = fetch(e.request).then(networkResponse => {
-                // Actualizamos la caché en segundo plano
-                return caches.open(CACHE_NAME).then(cache => {
-                    cache.put(e.request, networkResponse.clone());
-                    return networkResponse;
-                });
-            });
-            // Prioriza caché si existe, si no, espera a la red
-            return cachedResponse || networkFetch.catch(() => {
-                // Fallback: servir la app shell si t.odo falla
-                return caches.match('./index.html');
-            });
+        caches.match(e.request).then(cached => {
+            const fromNetwork = fetch(e.request).then(response =>
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(e.request, response.clone());
+                    return response;
+                })
+            );
+
+            return cached || fromNetwork.catch(() => caches.match('./index.html'));
         })
     );
 });

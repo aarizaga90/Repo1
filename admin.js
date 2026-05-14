@@ -101,36 +101,38 @@ function renderMoreQuestions() {
     if(oldSentinel) oldSentinel.remove();
 
     const nextBatch = filteredQuestions.slice(currentOffset, currentOffset + limit);
-    
     const fragment = document.createDocumentFragment();
+    
     nextBatch.forEach(q => {
         const letra = q.temario && q.temario.toLowerCase().startsWith('e') ? 'E' : 'C';
         const code = `${q.numero_temario || 'S/N'}-${letra}`;
+        const sinRespuesta = q.correcta === null || q.correcta === undefined;
+        
+        
         const div = document.createElement('div');
         div.className = 'q-admin-card';
         div.innerHTML = `
             <div class="q-admin-header">
                 <span class="q-code">${code}</span>
+                ${sinRespuesta ? '<span class="badge-no-answer">Sin respuesta</span>' : ''}
                 <button class="btn-edit" data-id="${q.id}">Editar</button>
             </div>
             <div class="q-admin-text"></div>
         `;
         div.querySelector('.q-admin-text').textContent = q.pregunta;
         fragment.appendChild(div);
-
     });
-    
+
     container.appendChild(fragment);
     currentOffset += limit;
-    
-    if (currentOffset < filteredQuestions.length)
-{
-    const sentinel = document.createElement('div');
-    sentinel.id = 'sentinel';
-sentinel.style.height = '20px';
-container.appendChild(sentinel);
-setupInfiniteScroll(sentinel);
-}
+
+    if (currentOffset < filteredQuestions.length) {
+        const sentinel = document.createElement('div');
+        sentinel.id = 'sentinel';
+        sentinel.style.height = '20px';
+        container.appendChild(sentinel);
+        setupInfiniteScroll(sentinel);
+    }
 }
 
 function setupInfiniteScroll(target) {
@@ -154,7 +156,7 @@ async function abrirEditorCompleto(id) {
     const optsContainer = document.getElementById('edit-options-list');
     
     // Limpiamos y añadimos título
-    optsContainer.innerHTML = '<label style="color:var(--muted); font-size:12px; display:block; margin-bottom:10px;">OPCIONES (Marca la correcta)</label>';
+    optsContainer.innerHTML = '<label style="color:var(--muted); font-size:12px; display:block; margin-bottom:10px;">OPCIONES (Marca la  - opcional)</label>';
 
     q.opciones.forEach((opt, i) => {
         const div = document.createElement('div');
@@ -166,6 +168,21 @@ async function abrirEditorCompleto(id) {
         `;
         optsContainer.appendChild(div);
     });
+
+    // Opción especial: ninguna respuesta correcta
+    const noneDiv = document.createElement('div');
+    noneDiv.className = 'edit-option-row';
+    noneDiv.style.borderColor = q.correcta === null || q.correcta === undefined
+        ? 'var(--wrong)' : '';
+    noneDiv.innerHTML = `
+        <input type="radio" name="correcta" value="none"
+            ${(q.correcta === null || q.correcta === undefined) ? 'checked' : ''}
+            style="margin-top:2px; flex-shrink:0;">
+        <span style="font-size:14px; color:var(--muted); align-self:center;">
+            ❌ Ninguna respuesta es correcta
+        </span>
+    `;
+    optsContainer.appendChild(noneDiv);
 
     // Evento para que los textareas crezcan solos al escribir (opcional pero pro)
     const textareas = optsContainer.querySelectorAll('textarea');
@@ -198,13 +215,9 @@ async function guardarCambios(id) {
 
     // Null check: si ningún radio está marcado, no guardar
     const checkedRadio = optsContainer.querySelector('input[name="correcta"]:checked');
-    if (!checkedRadio) {
-        // Sustituir por toast cuando esté implementado (ver ME1)
-        showToast('Marca cuál es la respuesta correcta antes de guardar.');
-        return;
-    }
-    
-    const nuevaCorrecta = parseInt(checkedRadio.value);
+    const nuevaCorrecta = (!checkedRadio || checkedRadio.value === 'none')
+        ? null
+        : parseInt(checkedRadio.value);
 
     await db.preguntas.update(id, {
         pregunta: nuevoTexto,
@@ -215,4 +228,7 @@ async function guardarCambios(id) {
     await initAdminList();
     showScreen('admin-list');
     showToast('Pregunta actualizada ✓');
+    showToast(nuevaCorrecta === null
+        ? 'Pregunta actualizada (sin respuesta correcta) ✓'
+        : 'Pregunta actualizada ✓');
 }

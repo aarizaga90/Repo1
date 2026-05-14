@@ -138,14 +138,30 @@ if(!btn) return;
 
         // Si estamos en la pantalla de estudio y hay preguntas respondidas...
         const currentScreen = document.querySelector('.screen.active').id;
-        if (currentScreen === 'study' && (session.correct > 0 || session.wrong > 0)) {
-            showModal("¿Quieres terminar la sesión y ver los resultados actuales?", {
+    if (currentScreen === 'study') {
+        // Examen en curso
+        if (session.isExam) {
+            showModal("¿Quieres abandonar el examen? Perderás todo el progreso.", {
+                confirmText: 'Abandonar',
+                cancelText: 'Seguir',
+                onConfirm: () => {
+                    stopExamTimer();
+                    //homeDirty = true;
+                    showScreen('home');
+                }
+            });
+            return;
+        }
+        // Sesión de estudio con respuestas
+        if (session.correct > 0 || session.wrong > 0) {
+            showModal("¿Quieres terminar la sesión y ver los resultados?", {
                 confirmText: 'Ver resultados',
                 cancelText: 'Seguir',
                 onConfirm: () => showResults()
             });
             return;
         }
+    }
         showScreen('home');
     });
 });
@@ -155,6 +171,7 @@ if(!btn) return;
 let selectedMode = 'all'; // 'all' | 'shuffle' | 'smart' | 'wrong' | 'unseen'
 let selectedTemario = 'todos'; // 'todos' | 'común' | 'específico'
 let answered = false;
+let examTimerInterval = null; // temporizador para examen
 
 let session = {
     mode: 'all',
@@ -378,177 +395,148 @@ function getQuestionCode(q) {
 }
 
 // ═══════════════════════════════════════════════
-//  STUDY — arranque de sesión
+//  STUDY — entrada principal (ahora solo enruta)
 // ═══════════════════════════════════════════════
 async function startStudy() {
     const total = await db.preguntas.count();
-    if (total === 0) {
-        showToast("No hay preguntas en la selección");
-        return;
-    }
-
-    console.log("🚀 Iniciando sesión. Modo seleccionado:", selectedMode);
+    if (total === 0) { showToast("No hay preguntas cargadas"); return; }
 
     const temarioInput = document.getElementById('filter-temario');
     selectedTemario = temarioInput ? temarioInput.value : 'todos';
-    
-    console.log("🎯 Filtrando por temario:", selectedTemario);
 
-    // Reset de sesión
     session = {
         mode: selectedMode,
-        queue: [],
-        index: 0,
-        correct: 0,
-        wrong: 0,
-        wrongAnswers: [],
-        currentQuestion: null,
-        nextBuffer: null,
-        lastId: null
+        queue: [], index: 0, correct: 0, wrong: 0,
+        wrongAnswers: [], currentQuestion: null, nextBuffer: null, lastId: null
     };
-
     answered = false;
 
-    if (selectedMode === 'smart') {
-        console.log("🧠 Entrando en lógica Smart...");
+    if (selectedMode === 'smart') return startSmartSession();
+    if (selectedMode === 'exam')  return startExamSession();
+    return startStandardSession();
+}
 
-/*        const cuentaPreguntas = document.getElementById('smart-limit');
-        let userLimit = cuentaPreguntas ? parseInt(cuentaPreguntas.value, 10) : 20;*/
+// ═══════════════════════════════════════════════
+//  SMART
+// ═══════════════════════════════════════════════
+async function startSmartSession() {
+    let query = selectedTemario !== 'todos'
+        ? db.preguntas.where('temario').equals(selectedTemario)
+        : db.preguntas.toCollection();
 
-        let query = (selectedTemario !== 'todos') ? db.preguntas.where('temario').equals(selectedTemario) : db.preguntas.toCollection();
-        const totalDisponible = await query.count();
+    const totalDisponible = await query.count();
+    if (totalDisponible === 0) { showToast("No hay preguntas en la selección"); return; }
 
-        if(totalDisponible === 0) {
-            showToast("No hay preguntas en la selección");
-            return;
-        }
+    const esInfinito = document.getElementById('smart-infinite')?.checked;
 
-        const infiniteCheckbox = document.getElementById('smart-infinite');
-        const esInfinito = infiniteCheckbox && infiniteCheckbox.checked;
-
-        if (esInfinito) {
-            SMART_SESSION_LENGTH = Infinity;
-        } else {
-            let userLimit = parseInt(document.getElementById('smart-limit')?.value, 10);
+    if (esInfinito) {
+        SMART_SESSION_LENGTH = Infinity;
+    } else {
+        let userLimit = parseInt(document.getElementById('smart-limit')?.value, 10);
         if (isNaN(userLimit) || userLimit < 1) userLimit = 1;
-
         SMART_SESSION_LENGTH = Math.min(userLimit, totalDisponible);
-        }
-
-        const first = await getSmartNextQuestion();
-        if (!first) {
-            showToast('No hay preguntas disponibles');
-            return;
-        }
-        session.currentQuestion = first;
-        session.lastId = first.id;
-        console.log("✅ Primera pregunta elegida:", getQuestionCode(first), "ID:", first.id);
-        prepareNextQuestion(); // fire-and-forget
-        startTimer();
-        showScreen('study');
-        renderCurrentQuestion();
-        return;
     }
 
-    if (selectedMode === 'exam') {
-        const numComun = parseInt(document.getElementById('exam-comun').value) || 0;
-        const numEspec = parseInt(document.getElementById('exam-especifico').value) || 0;
-        const examMinutes = parseInt(document.getElementById('exam-time').value) || 60;
+    const first = await getSmartNextQuestion();
+    if (!first) { showToast('No hay preguntas disponibles'); return; }
 
-        // 1. Obtener pools por separado
-        let poolComun = await db.preguntas.where('temario').equals('común').toArray();
-        let poolEspec = await db.preguntas.where('temario').equals('específico').toArray();
+    session.currentQuestion = first;
+    session.lastId = first.id;
+    prepareNextQuestion();
+    startTimer();
+    showScreen('study');
+    renderCurrentQuestion();
+}
 
-        // 2. Mezclar y recortar
-        poolComun = poolComun.sort(() => Math.random() - 0.5).slice(0, numComun);
-        poolEspec = poolEspec.sort(() => Math.random() - 0.5).slice(0, numEspec);
+// ═══════════════════════════════════════════════
+//  EXAMEN
+// ═══════════════════════════════════════════════
+async function startExamSession() {
+    const numComun    = parseInt(document.getElementById('exam-comun')?.value)  || 0;
+    const numEspec    = parseInt(document.getElementById('exam-especifico')?.value) || 0;
+    const examMinutes = parseInt(document.getElementById('exam-time')?.value)   || 60;
 
-        const examPool = [...poolComun, ...poolEspec].sort(() => Math.random() - 0.5);
+    let poolComun = await db.preguntas.where('temario').equals('común').toArray();
+    let poolEspec = await db.preguntas.where('temario').equals('específico').toArray();
 
-        if (examPool.length === 0) { showToast("No hay preguntas disponibles"); return; }
+    // Filtrar preguntas sin respuesta correcta
+    const tieneRespuesta = q => q.correcta !== null && q.correcta !== undefined;
+    poolComun = poolComun.filter(tieneRespuesta).sort(() => Math.random() - 0.5).slice(0, numComun);
+    poolEspec = poolEspec.filter(tieneRespuesta).sort(() => Math.random() - 0.5).slice(0, numEspec);
 
-        // 3. Configurar sesión especial
-        session.mode = 'exam';
-        session.queue = examPool;
-        session.isExam = true; // Flag para no corregir al momento
-        session.answers = {}; // Guardaremos {preguntaId: respuestaElegida}
-        session.timeLeft = examMinutes * 60;
+    const examPool = [...poolComun, ...poolEspec].sort(() => Math.random() - 0.5);
+    if (examPool.length === 0) { showToast("No hay preguntas disponibles"); return; }
 
-        startExamTimer(); // Una nueva función de cronómetro
-        showScreen('study');
-        renderCurrentQuestion();
-        return;
-    }
+    Object.assign(session, {
+        mode: 'exam', queue: examPool, isExam: true,
+        answers: {}, timeLeft: examMinutes * 60,
+        originalTime: examMinutes * 60, currentQuestion: examPool[0]
+    });
 
-    // Modos no-smart: construimos la cola completa
+    startExamTimer();
+    showScreen('study');
+    renderCurrentQuestion();
+}
+
+// ═══════════════════════════════════════════════
+//  MODOS ESTÁNDAR (all, shuffle, wrong, unseen)
+// ═══════════════════════════════════════════════
+async function startStandardSession() {
     const [allQuestions, allStats] = await Promise.all([
         db.preguntas.orderBy('id').toArray(),
         db.stats.toArray()
     ]);
     const statsMap = new Map(allStats.map(s => [s.id, s]));
 
-    let pool = allQuestions;
+    // Filtrar preguntas sin respuesta correcta
+    let pool = allQuestions.filter(q => q.correcta !== null && q.correcta !== undefined);
 
-    // 2. APLICAR FILTRO DE TEMARIO
+    // Filtrar por temario
     if (selectedTemario !== 'todos') {
         pool = pool.filter(q => q.temario === selectedTemario);
     }
 
-    // 3. APLICAR EL RANGO SOBRE LA LISTA FILTRADA
-    if (selectedMode === 'all') {
-        console.log("📋 Iniciando modo TODAS:", selectedMode);
-        const startInput = document.getElementById('range-start');
-        const endInput = document.getElementById('range-end');
-
-        // Si el usuario puso 1 a 50, sacamos las 50 primeras del bloque elegido
-        const startVal = startInput ? parseInt(startInput.value, 10) : 1;
-        const endVal = endInput ? parseInt(endInput.value, 10) : pool.length;
-
-        const start = Math.max(0, startVal - 1);
-        const end = Math.min(pool.length, endVal);
-
-        pool = pool.slice(start, end);
-    } else if (selectedMode === 'wrong') {
-        console.log("📋 Iniciando modo Falladas:", selectedMode);
-        pool = pool.filter(q => {
-            const s = statsMap.get(q.id);
-            return s && (s.wrong || 0) > 0;
-        });
-    } else if (selectedMode === 'unseen') {
-        console.log("📋 Iniciando modo NO-VISTAS:", selectedMode);
-        pool = pool.filter(q => !statsMap.has(q.id));
-        } else if (selectedMode === 'shuffle') {
-    console.log("🔀 Iniciando modo ALEATORIO POR RANGO");
-    const startInput = document.getElementById('range-start');
-    const endInput = document.getElementById('range-end');
-
-    const startVal = startInput ? parseInt(startInput.value, 10) : 1;
-    const endVal = endInput ? parseInt(endInput.value, 10) : pool.length;
-
-    const start = Math.max(0, startVal - 1);
-    const end = Math.min(pool.length, endVal);
-
-    // PRIMERO: Cortamos el rango que el usuario quiere
-    pool = pool.slice(start, end);
-    
-    // SEGUNDO: Mezclamos SOLO ese rango
-    pool = pool.sort(() => Math.random() - 0.5);
-    }
+    // Filtrar según modo
+    pool = applyModeFilter(pool, statsMap);
 
     if (pool.length === 0) {
-        const msg = selectedMode === 'wrong'  ? `No tienes preguntas falladas en ${selectedTemario} 🎉`
-            : selectedMode === 'unseen' ? `Ya has visto todas las preguntas de ${selectedTemario}`
-                :                             `No hay preguntas en ${selectedTemario}`;
-        showToast(msg);
+        const msgs = {
+            wrong:  `No tienes preguntas falladas en "${selectedTemario}" 🎉`,
+            unseen: `Ya has visto todas las preguntas de "${selectedTemario}"`
+        };
+        showToast(msgs[selectedMode] || `No hay preguntas en "${selectedTemario}"`);
         return;
     }
 
     session.queue = pool;
     session.currentQuestion = pool[0];
-    console.log("✅ Primera pregunta elegida:", getQuestionCode(pool[0]), "ID:", pool[0].id);
     startTimer();
     showScreen('study');
     renderCurrentQuestion();
+}
+
+// ═══════════════════════════════════════════════
+//  HELPER — filtro por modo
+// ═══════════════════════════════════════════════
+function applyModeFilter(pool, statsMap) {
+    const getRangeSlice = (arr) => {
+        const startVal = parseInt(document.getElementById('range-start')?.value, 10) || 1;
+        const endVal   = parseInt(document.getElementById('range-end')?.value, 10) || arr.length;
+        return arr.slice(Math.max(0, startVal - 1), Math.min(arr.length, endVal));
+    };
+
+    switch (selectedMode) {
+        case 'all':
+            return getRangeSlice(pool);
+        case 'shuffle':
+            return getRangeSlice(pool).sort(() => Math.random() - 0.5);
+        case 'wrong':
+            return pool.filter(q => (statsMap.get(q.id)?.wrong || 0) > 0);
+        case 'unseen':
+            return pool.filter(q => !statsMap.has(q.id));
+        default:
+            return pool;
+    }
 }
 
 // ═══════════════════════════════════════════════
@@ -582,14 +570,16 @@ function renderCurrentQuestion() {
     document.querySelector('.question-num').textContent = `PREGUNTA ${code}`;
 
     // 2. Gestión de Footer y Cronómetro
-    const footer = document.getElementById('answer-footer');
+    const answerFooter = document.getElementById('answer-footer');
+    const examFooter   = document.getElementById('exam-footer');
+
     if (isExam) {
-        footer.style.display = 'none'; // En examen no hay explicación inmediata
+        answerFooter.style.display = 'none';
         document.getElementById('study').classList.remove('footer-visible');
-        // Si tienes un badge de tiempo, lo actualizamos aquí
-        updateTimerDisplay();
+        updateExamTimerDisplay();
     } else {
-        footer.style.display = 'none'; // Se mostrará al responder en modo normal
+        examFooter.style.display = 'none';   // ocultar footer de examen
+        answerFooter.style.display = 'none'; // se mostrará al responder
         document.getElementById('study').classList.remove('footer-visible');
     }
 
@@ -618,31 +608,45 @@ function renderCurrentQuestion() {
     });
 
     // 4. Inyectar botones de navegación (solo si es examen)
-    updateExamNavigation(idx, total);
+    if (isExam) {
+        document.getElementById('study').classList.add('footer-visible');
+        updateExamNavigation(idx, total);
+    }
 }
 
 function updateExamNavigation(idx, total) {
-    // Buscamos o creamos un contenedor para los botones de navegación en el examen
-    let navContainer = document.getElementById('exam-nav-controls');
+    if (session.mode !== 'exam') return;
 
-    if (session.mode !== 'exam') {
-        if (navContainer) navContainer.style.display = 'none';
-        return;
-    }
+    const footer = document.getElementById('exam-footer');
+    const respondidas = Object.keys(session.answers || {}).length;
+    const sinResponder = total - respondidas;
 
-    if (!navContainer) {
-        navContainer = document.createElement('div');
-        navContainer.id = 'exam-nav-controls';
-        navContainer.className = 'exam-nav-bar'; // Añade estilo en CSS
-        document.getElementById('question-scroll').appendChild(navContainer);
-    }
-
-    navContainer.style.display = 'flex';
-    navContainer.innerHTML = `
-        <button onclick="examPrevQuestion()" ${idx === 0 ? 'disabled' : ''} class="btn-nav">⬅️ Anterior</button>
-        <button onclick="confirmFinishExam()" class="btn-finish">Entregar Examen</button>
-        <button onclick="examNextQuestion()" ${idx === total - 1 ? 'disabled' : ''} class="btn-nav">Siguiente ➡️</button>
+    footer.style.display = 'block';
+    footer.innerHTML = `
+        <div class="exam-footer-inner">
+            <div class="exam-footer-count ${sinResponder > 0 ? 'exam-nav-count--warn' : 'exam-nav-count--ok'}">
+                ${sinResponder > 0 ? `${sinResponder} sin responder` : '✓ Todas respondidas'}
+            </div>
+            <div class="exam-footer-nav">
+                <button id="exam-prev-btn" class="btn-nav" ${idx === 0 ? 'disabled' : ''}>
+                    ← Atrás
+                </button>
+                <div class="exam-nav-center-col">
+                    <button id="exam-finish-btn" class="btn-finish">Entregar</button>
+                </div>
+                <button id="exam-next-btn" class="btn-nav" ${idx === total - 1 ? 'disabled' : ''}>
+                    Siguiente →
+                </button>
+            </div>
+        </div>
     `;
+
+    document.getElementById('exam-prev-btn')
+        ?.addEventListener('click', examPrevQuestion);
+    document.getElementById('exam-finish-btn')
+        ?.addEventListener('click', confirmFinishExam);
+    document.getElementById('exam-next-btn')
+        ?.addEventListener('click', examNextQuestion);
 }
 
 function examNextQuestion() {
@@ -650,9 +654,6 @@ function examNextQuestion() {
         session.index++;
         session.currentQuestion = session.queue[session.index];
         renderCurrentQuestion();
-    } else if (!session.isExam) {
-        // Si no es examen y llegamos al final, quizás generar una nueva
-        // o terminar sesión normal
     }
 }
 
@@ -665,44 +666,51 @@ function examPrevQuestion() {
 }
 
 function confirmFinishExam() {
-    const respondidas = Object.keys(session.answers).length;
+    const respondidas = Object.keys(session.answers || {}).length;
     const total = session.queue.length;
+    const sinResponder = total - respondidas;
 
-    const msg = `Has respondido ${respondidas} de ${total} preguntas.\n¿Estás seguro de que quieres entregar el examen?`;
-
-    showModal(msg, {
-        confirmText: 'Terminar el examen',
-        cancelText: 'Seguir con el examen',
-        onConfirm: () => finishExam()
-    });
+    if (sinResponder > 0) {
+        showModal(
+            `⚠️ Tienes ${sinResponder} pregunta${sinResponder !== 1 ? 's' : ''} sin responder.\n\nLas respuestas en blanco no restan, pero tampoco suman. ¿Seguro que quieres entregar?`,
+            {
+                confirmText: '📨 Entregar así',
+                cancelText: '← Seguir revisando',
+                onConfirm: () => finishExam()
+            }
+        );
+    } else {
+        showModal(
+            `✅ Has respondido las ${total} preguntas.\n\n¿Quieres entregar o prefieres repasar alguna respuesta antes?`,
+            {
+                confirmText: '📨 Entregar',
+                cancelText: '← Repasar',
+                onConfirm: () => finishExam()
+            }
+        );
+    }
 }
 
 async function finishExam() {
-    clearInterval(examTimerInterval);
+    stopExamTimer(); // ← usa la función, no clearInterval directo
 
-    let aciertos = 0;
-    let fallos = 0;
-    let blancas = 0;
+    let aciertos = 0, fallos = 0, blancas = 0;
 
-    session.queue.forEach(q => {
-        const respuestaUser = session.answers[q.id];
-
-        if (respuestaUser === undefined) {
+    for (const q of session.queue) {  // ← for...of para poder usar await dentro
+        const respuesta = session.answers[q.id];
+        if (respuesta === undefined) {
             blancas++;
-        } else if (respuestaUser === q.correcta) {
+        } else if (respuesta === q.correcta) {
             aciertos++;
-            // Opcional: Actualizar stats de la DB aquí al final
+            await recordAnswer(q.id, true);
         } else {
             fallos++;
-            // Opcional: Actualizar stats de la DB aquí al final
+            await recordAnswer(q.id, false);
         }
-    });
+    }
 
-    // Fórmula típica de oposición: Aciertos - (Fallos / 3)
-    // Suponiendo que cada pregunta vale 1 punto
-    const notaFinal = (aciertos - (fallos / 3)).toFixed(2);
+    const notaFinal = Math.max(0, aciertos - fallos / 3).toFixed(2);
 
-    // Mostramos resultados (puedes usar un modal o una pantalla nueva)
     showExamResults({
         nota: notaFinal,
         aciertos,
@@ -711,6 +719,26 @@ async function finishExam() {
         total: session.queue.length
     });
 }
+function showExamResults({ nota, aciertos, fallos, blancas, total }) {
+    const aprobado = parseFloat(nota) >= total / 2;
+    const elapsed = session.originalTime - Math.max(0, session.timeLeft || 0);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+
+    document.getElementById('res-emoji').textContent = aprobado ? '🎓' : '📖';
+    document.getElementById('res-title').textContent = aprobado ? '¡Aprobado!' : 'No aprobado';
+    document.getElementById('res-sub').textContent =
+        `${aciertos} correctas · ${fallos} incorrectas · ${blancas} en blanco`;
+    document.getElementById('res-pct').textContent = nota;
+    document.getElementById('res-correct').textContent = aciertos;
+    document.getElementById('res-wrong').textContent = fallos;
+    document.getElementById('res-time').textContent =
+        `${mins}:${secs.toString().padStart(2, '0')}`;
+    document.getElementById('res-avg').textContent =
+        `${total > 0 ? (elapsed / total).toFixed(1) : 0}s`;
+
+    showScreen('results');
+}
 
 async function selectAnswer(chosen) {
     if (answered) return;
@@ -718,6 +746,12 @@ async function selectAnswer(chosen) {
 
     const q = session.currentQuestion;
     if (!q) return;
+
+    if (!session.isExam && (q.correcta === null || q.correcta === undefined)) {
+        console.warn('Pregunta sin respuesta correcta en sesión:', q.id);
+        nextQuestion();
+        return;
+    }
 
     // SI ES MODO EXAMEN: Guardamos y pasamos
     if (session.isExam) {
@@ -731,8 +765,16 @@ async function selectAnswer(chosen) {
             session.answers[q.id] = chosen;
         }
 
-        // Repintamos la pregunta actual para que los botones reflejen el cambio
-        renderCurrentQuestion();
+        // Solo actualizar clases — sin re-render, sin animación
+        const opts = document.querySelectorAll('#options-list .option');
+        opts.forEach((btn, i) => {
+            btn.classList.toggle('selected-exam', session.answers[q.id] === i);
+        });
+
+        // Actualizar contador del nav bar
+        updateExamNavigation(session.index, session.queue.length);
+
+        answered = false; // permitir siguiente interacción
         return;
     }
 
@@ -759,6 +801,7 @@ async function selectAnswer(chosen) {
     }
     
     //mostrar footer
+    document.getElementById('exam-footer').style.display = 'none';
     document.getElementById('answer-footer').style.display = 'block';
     document.getElementById('study').classList.add('footer-visible');
     const isLast = session.mode === 'smart'
@@ -815,7 +858,15 @@ async function getSmartNextQuestion() {
         ? db.preguntas.where('temario').equals(selectedTemario)
         : db.preguntas.toCollection();
 
-    const allIds = await query.primaryKeys();
+    const allQuestions = await query.toArray();
+    const validQuestions = allQuestions.filter(
+        q => q.correcta !== null && q.correcta !== undefined
+    );
+
+    if (validQuestions.length === 0) { console.groupEnd(); return null; }
+
+    const allIds = validQuestions.map(q => q.id);
+    
     const allStats = await db.stats.toArray();
     
     if (allIds.length === 0) {
@@ -918,6 +969,38 @@ function stopTimer() {
         clearInterval(timerInterval);
         timerInterval = null;
     }
+}
+
+function startExamTimer() {
+    stopExamTimer();
+    updateExamTimerDisplay();
+    examTimerInterval = setInterval(() => {
+        session.timeLeft--;
+        updateExamTimerDisplay();
+        if (session.timeLeft <= 0) {
+            stopExamTimer();
+            showToast('⏱ Tiempo agotado — corrigiendo...');
+            setTimeout(() => finishExam(), 1500);
+        }
+    }, 1000);
+}
+
+function stopExamTimer() {
+    if (examTimerInterval) {
+        clearInterval(examTimerInterval);
+        examTimerInterval = null;
+    }
+}
+
+function updateExamTimerDisplay() {
+    const el = document.getElementById('timer');
+    if (!el) return;
+    const t = Math.max(0, session.timeLeft || 0);
+    const mins = Math.floor(t / 60);
+    const secs = t % 60;
+    el.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    // Rojo en el último minuto
+    el.style.color = t <= 60 ? 'var(--wrong)' : 'var(--accent)';
 }
 
 function updateTimerDisplay() {
@@ -1053,7 +1136,7 @@ async function handleFileImport(e) {
                 numero_temario: q.numero_temario,
                 pregunta: q.pregunta,
                 opciones: q.opciones,
-                correcta: q.correcta !== undefined ? q.correcta : 0
+                correcta: q.correcta !== undefined ? q.correcta : null
             };
         });
 
@@ -1089,7 +1172,10 @@ function showScreen(id) {
     document.getElementById(id).classList.add('active');
     if (id === 'history') renderHistory();
     if (id === 'home') refreshHome();
-    if (id !== 'study') stopTimer(); // si salimos del estudio, paramos el timer
+    if (id !== 'study') {
+        stopTimer();
+        stopExamTimer();// si salimos del estudio, paramos el timer
+    }
 }
 
 /**

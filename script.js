@@ -1043,15 +1043,12 @@ function showScreen(id) {
 function initServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
 
-    window.addEventListener('load', async () => {
+    const register = async () => {
         try {
             const reg = await navigator.serviceWorker.register('./sw.js', {
                 updateViaCache: 'none'
             });
-            
-            // Espera a que el SW esté activo Y la caché creada
-            // En primera carga: espera la instalación completa
-            // En siguientes: resuelve inmediatamente
+
             await navigator.serviceWorker.ready;
             showAppVersion();
 
@@ -1060,7 +1057,7 @@ function initServiceWorker() {
                 showModal(
                     enEstudio
                         ? '🚀 Nueva versión disponible.\n\nSi actualizas ahora perderás la sesión en curso.'
-                        : '🚀 Nueva versión disponible.\n\n¿Actualizas ahora?',
+                        : '🚀 Nueva versión disponible. ¿Actualizas ahora?',
                     {
                         confirmText: 'Actualizar',
                         cancelText:  'Luego',
@@ -1069,17 +1066,23 @@ function initServiceWorker() {
                 );
             });
 
-            // Chequear actualizaciones al volver a primer plano (iOS)
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') reg.update();
             });
 
         } catch (err) {
-            console.error('SW: error al registrar —', err);
+            console.error('SW: error —', err);
             const el = document.getElementById('app-version');
             if (el) el.textContent = `SW err: ${err.message}`;
         }
-    });
+    };
+
+    // Si load ya ocurrió (carga rápida en PWA), registrar inmediatamente
+    if (document.readyState === 'complete') {
+        register();
+    } else {
+        window.addEventListener('load', register);
+    }
 }
 
 // ═══════════════════════════════════════════════

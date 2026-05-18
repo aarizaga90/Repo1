@@ -37,11 +37,20 @@ html, body {
     color: var(--text);
     font-family: 'Nunito', sans-serif;
     overflow: hidden;
-    overflow-x: hidden;
     touch-action: pan-x pan-y;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    height: -webkit-fill-available;
+}
+
+body {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow: hidden;
 }
 
 input, textarea, select {
@@ -50,9 +59,7 @@ input, textarea, select {
 
 /* ── App shell ──────────────────────────────── */
 #app {
-    position: fixed;
-    inset: 0;
-    /*height: 100dvh;*/
+    height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -63,6 +70,7 @@ input, textarea, select {
 /* ── Screens ────────────────────────────────── */
 .screen {
     display: none;
+    flex: 1;
     flex-direction: column;
     height: 100%;
     min-height: 0;
@@ -295,7 +303,7 @@ button:focus-visible,
 /* ─────────────────────────────────────────────
    STUDY
    ───────────────────────────────────────────── */
-#study { padding: 0; overflow: hidden; }
+#study { overflow: hidden; }
 
 .study-header {
     padding: 14px 20px;

@@ -62,7 +62,7 @@ input, textarea, select {
     padding-bottom: var(--safe-bottom);
 }
 
-/* ── Screens ────────────────────────────────── */
+/* ── Screens ────────────────────────────────– */
 .screen {
     display: none;
     overflow-y: scroll;
@@ -71,7 +71,7 @@ input, textarea, select {
 }
 .screen.active {
     display: flex;
-    flex: 1;/
+    flex: 1;
     min-height: 0;
     flex-direction: column;
 }
@@ -361,7 +361,7 @@ button:focus-visible,
 
 .question-scroll {
     position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 65px); /* safe-top + altura del header */
+    top: calc(env(safe-area-inset-top, 0px) + 65px);
     bottom: 0;
     left: 0;
     right: 0;
@@ -975,3 +975,16 @@ button:focus-visible,
 }
 
 .screen.active { animation: slideUp 0.25s ease; }
+
+/* ─────────────────────────────────────────────
+   iOS PWA VIEWPORT FIX
+   ───────────────────────────────────────────── */
+@supports (padding: max(0px)) {
+    #app {
+        height: 100dvh;
+    }
+    
+    .question-scroll {
+        max-height: 100%;
+    }
+}

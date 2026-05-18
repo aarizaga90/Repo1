@@ -998,13 +998,35 @@ async function handleFileImport(e) {
 }
 
 async function showAppVersion() {
+    const el = document.getElementById('app-version');
+    if (!el) return;
+
     try {
-        const keys  = await caches.keys();
+        // ¿Tiene el navegador SW?
+        if (!('serviceWorker' in navigator)) {
+            el.textContent = 'SW: no soportado'; return;
+        }
+
+        // ¿Hay algún SW registrado?
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) {
+            el.textContent = 'SW: no registrado'; return;
+        }
+
+        // Estado del SW
+        const sw = reg.active || reg.installing || reg.waiting;
+        const estado = reg.active ? 'activo' : reg.waiting ? 'esperando' : 'instalando';
+
+        // ¿Qué cachés existen?
+        const keys = await caches.keys();
         const cache = keys.find(k => k.startsWith('opos-'));
-        const el    = document.getElementById('app-version');
-        if (el) el.textContent = cache ?? 'sin caché';
-    } catch {
-        // falla silenciosamente si caches no está disponible
+
+        el.textContent = cache
+            ? cache
+            : `SW ${estado} · cachés: [${keys.join(', ') || 'ninguna'}]`;
+
+    } catch (err) {
+        el.textContent = `err: ${err.message}`;
     }
 }
 

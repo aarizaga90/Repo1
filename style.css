@@ -57,7 +57,7 @@ input, textarea, select {
     height: 100%;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    /*overflow: hidden;*/
     padding-top: var(--safe-top);
     padding-bottom: var(--safe-bottom);
 }
@@ -77,12 +77,12 @@ input, textarea, select {
 }
 
     #study.active {
-        overflow: hidden;
+        overflow: visible;
         animation: none;
     }
 
 #study {
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* ─────────────────────────────────────────────

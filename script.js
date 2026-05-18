@@ -150,7 +150,10 @@ async function selectModeSecure(el, mode, target) {
     const activePanel   = target === 'top' ? pTop : pBottom;
     const inactivePanel = target === 'top' ? pBottom : pTop;
 
-    if (inactivePanel) inactivePanel.classList.remove('active');
+    if (inactivePanel) {
+        inactivePanel.classList.remove('active');
+        inactivePanel.innerHTML = '';
+    }
 
     const totalPregs = typeof db !== 'undefined' ? await db.preguntas.count() : 200;
 

@@ -83,18 +83,15 @@ input, textarea, select {
     flex-direction: column !important;
     overflow: hidden !important;
     background: var(--bg);
-    z-index: var(--z-overlay);  /* Ponlo arriba del todo, como el import overlay */
-
-    /* Reseteamos lo que mete .screen.active y rompe iOS */
+    z-index: 1;
     flex: none !important;
     transform: none !important;  /* 👈 CRUCIAL: Elimina la animación slideUp que rompe el fixed */
     animation: none !important;  /* Evita que el transform rompa el contexto */
 
     /* Control de Safe Areas directo */
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: 0;           /* Queremos que el fondo llegue abajo del todo */
+    adding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);  /* safe area aquí, no en el footer */
 }
-
 
 #study {
     overflow: hidden;
@@ -437,7 +434,7 @@ button:focus-visible,
 
 /* ── Footer: modo estudio ───────────────────── */
 .answer-footer {
-    padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 12px 20px;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
     background: var(--bg);

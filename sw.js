@@ -16,11 +16,26 @@ const ASSETS = [
 ];
 
 // Instalar: cachear todos los assets
-self.addEventListener('install', e => {
+/*self.addEventListener('install', e => {
     e.waitUntil(
         caches.open(CACHE_NAME)
             .then(c => c.addAll(ASSETS))
             .then(() => self.skipWaiting())
+    );
+});*/
+
+self.addEventListener('install', e => {
+    e.waitUntil(
+        caches.open(CACHE_NAME).then(async cache => {
+            // Cada asset falla de forma independiente — uno roto no cancela todo
+            await Promise.all(
+                ASSETS.map(url =>
+                    cache.add(url).catch(err =>
+                        console.warn(`SW: sin cachear ${url}`, err)
+                    )
+                )
+            );
+        }).then(() => self.skipWaiting())
     );
 });
 

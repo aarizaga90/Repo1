@@ -423,10 +423,16 @@ button:focus-visible,
 
 /* ── Footer: modo estudio ───────────────────── */
 .answer-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     padding: 12px 20px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border);
     flex-shrink: 0;
     background: var(--bg);
+    z-index: var(--z-sticky);
     overflow: hidden;
     touch-action: none;
     overscroll-behavior: none;

@@ -71,27 +71,15 @@ input, textarea, select {
 }
 .screen.active {
     display: flex;
-    flex: 1;               /* ocupa completo el alto de #app */
+    flex: 1;/
     min-height: 0;
     flex-direction: column;
 }
 
-#study.active {
-    position: fixed !important; /* Asegura el anclaje total */
-    inset: 0 !important;        /* Cubre el 100% real de la pantalla */
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    background: var(--bg);
-    z-index: 1;
-    flex: none !important;
-    transform: none !important;  /* 👈 CRUCIAL: Elimina la animación slideUp que rompe el fixed */
-    animation: none !important;  /* Evita que el transform rompa el contexto */
-
-    /* Control de Safe Areas directo */
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: 0;  /* safe area aquí, no en el footer */
-}
+    #study.active {
+        overflow: hidden;
+        animation: none;
+    }
 
 #study {
     overflow: hidden;
@@ -371,6 +359,7 @@ button:focus-visible,
     min-height: 0;
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
+    /*overscroll-behavior: none;*/
     padding: 16px 20px 0;
     animation: slideUp 0.25s ease both;
 }
@@ -440,6 +429,7 @@ button:focus-visible,
     background: var(--bg);
     overflow: hidden;
     touch-action: none;
+    overscroll-behavior: none;
 }
 .footer-actions {
     display: flex;

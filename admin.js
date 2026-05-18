@@ -1,34 +1,37 @@
-let currentOffset = 0;
-const limit = 20;
-let allQuestions = [];
-let filteredQuestions = []; // Nueva variable para manejar los filtros
+// ═══════════════════════════════════════════════
+//  OposTest — Admin
+// ═══════════════════════════════════════════════
 
-// Esta función se llama al pulsar el botón de gestión
+// Estado encapsulado — evita contaminar el scope global
+const adminState = {
+    allQuestions:      [],
+    filteredQuestions: [],
+    currentOffset:     0,
+    PAGE_SIZE:         20
+};
+
+// ── Init ──────────────────────────────────────────────────────
 async function initAdminList() {
-    const container = document.getElementById('questions-list-container');
-    const countEl = document.getElementById('search-count');
+    const container   = document.getElementById('questions-list-container');
+    const countEl     = document.getElementById('search-count');
     const searchInput = document.getElementById('search-input');
-    
+
     if (!container) return;
 
-    // 1. Limpiar todo y mostrar carga
     container.innerHTML = '<div class="skeleton"></div>'.repeat(5);
-    if (searchInput) searchInput.value = ''; // Limpiar buscador al entrar
+    if (searchInput) searchInput.value = '';
 
     try {
         if (!db.isOpen()) await db.open();
-        
-        // 2. Cargar todas las preguntas en memoria
-        allQuestions = await db.preguntas.toArray();
-        filteredQuestions = [...allQuestions]; // Al principio, el filtro son todas
-        
-        // 3. Resetear scroll y pintar
-        countEl.textContent = `${allQuestions.length} preguntas`;
 
+        adminState.allQuestions      = await db.preguntas.toArray();
+        adminState.filteredQuestions = [...adminState.allQuestions];
+        adminState.currentOffset     = 0;
+
+        if (countEl) countEl.textContent = `${adminState.allQuestions.length} preguntas`;
         container.innerHTML = '';
-        currentOffset = 0;
 
-        // Escuchador de clics (Delegación). Primero guard para evitar re-crear
+        // Delegación de clics — solo se registra una vez
         if (!container.dataset.hooked) {
             container.addEventListener('click', (e) => {
                 const btn = e.target.closest('.btn-edit');
@@ -36,79 +39,90 @@ async function initAdminList() {
             });
             container.dataset.hooked = 'true';
         }
-        
+
         renderMoreQuestions();
         setupSearchListener();
         setupScrollTop();
-        
+
     } catch (err) {
-        console.error("Error en admin:", err);
-        container.innerHTML = `<p style="color:white">Error al cargar datos.</p>`;
+        console.error('Admin: error al cargar datos —', err);
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <div class="empty-title">Error al cargar</div>
+                <div class="empty-sub">Recarga la app e inténtalo de nuevo</div>
+            </div>`;
     }
 }
 
-//saca el botón de navegación al top
+// ── FAB scroll-to-top ────────────────────────────────────────
 function setupScrollTop() {
     let btn = document.getElementById('scroll-top-btn');
     if (!btn) {
         btn = document.createElement('button');
         btn.id = 'scroll-top-btn';
         btn.innerHTML = '↑';
+        btn.setAttribute('aria-label', 'Volver al inicio de la lista');
         document.body.appendChild(btn);
-        btn.onclick = () => window.scrollTo({top: 0, behavior: 'smooth'});
+        btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
     }
 
-    window.onscroll = () => {
-        if (window.scrollY > 500) btn.style.display = 'block';
-        else btn.style.display = 'none';
+    // Handler nombrado para poder limpiarlo al salir del admin
+    const scrollHandler = () => {
+        btn.style.display = window.scrollY > 500 ? 'block' : 'none';
     };
+    window.addEventListener('scroll', scrollHandler, { passive: true });
+    btn._scrollHandler = scrollHandler;
 }
 
-// Escucha el teclado en tiempo real
+// ── Buscador con debounce ─────────────────────────────────────
 function setupSearchListener() {
     const searchInput = document.getElementById('search-input');
     if (!searchInput || searchInput.dataset.hooked) return;
 
+    let debounceTimer;
     searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        
-        // Filtrar el array global
-        filteredQuestions = allQuestions.filter(q => 
-            q.id.toString().includes(query) || 
-            q.pregunta.toLowerCase().includes(query)
-        );
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const query = e.target.value.toLowerCase().trim();
 
-        // Actualizar contador visual
-        const countEl = document.getElementById('search-count');
-        if (countEl) countEl.textContent = `${filteredQuestions.length} preguntas`;
+            adminState.filteredQuestions = adminState.allQuestions.filter(q =>
+                q.id.toString().includes(query) ||
+                q.pregunta.toLowerCase().includes(query)
+            );
 
-        // Reiniciar la lista visual
-        const container = document.getElementById('questions-list-container');
-        container.innerHTML = '';
-        currentOffset = 0;
-        renderMoreQuestions();
+            const countEl = document.getElementById('search-count');
+            if (countEl) countEl.textContent = `${adminState.filteredQuestions.length} preguntas`;
+
+            const container = document.getElementById('questions-list-container');
+            if (container) container.innerHTML = '';
+            adminState.currentOffset = 0;
+            renderMoreQuestions();
+        }, 180);
     });
 
-    searchInput.dataset.hooked = "true"; // Marcamos para no duplicar el evento
+    searchInput.dataset.hooked = 'true';
 }
 
-// Pinta el siguiente bloque de preguntas (del array filtrado)
+// ── Renderizado por lotes (infinite scroll) ──────────────────
 function renderMoreQuestions() {
     const container = document.getElementById('questions-list-container');
     if (!container) return;
 
-    const oldSentinel = document.getElementById('sentinel');
-    if(oldSentinel) oldSentinel.remove();
+    document.getElementById('sentinel')?.remove();
 
-    const nextBatch = filteredQuestions.slice(currentOffset, currentOffset + limit);
+    const batch = adminState.filteredQuestions.slice(
+        adminState.currentOffset,
+        adminState.currentOffset + adminState.PAGE_SIZE
+    );
+
     const fragment = document.createDocumentFragment();
-    
-    nextBatch.forEach(q => {
-        const letra = q.temario && q.temario.toLowerCase().startsWith('e') ? 'E' : 'C';
-        const code = `${q.numero_temario || 'S/N'}-${letra}`;
+
+    batch.forEach(q => {
+        const letra       = q.temario?.toLowerCase().startsWith('e') ? 'E' : 'C';
+        const code        = `${q.numero_temario || 'S/N'}-${letra}`;
         const sinRespuesta = q.correcta === null || q.correcta === undefined;
-        
-        
+
         const div = document.createElement('div');
         div.className = 'q-admin-card';
         div.innerHTML = `
@@ -124,9 +138,9 @@ function renderMoreQuestions() {
     });
 
     container.appendChild(fragment);
-    currentOffset += limit;
+    adminState.currentOffset += adminState.PAGE_SIZE;
 
-    if (currentOffset < filteredQuestions.length) {
+    if (adminState.currentOffset < adminState.filteredQuestions.length) {
         const sentinel = document.createElement('div');
         sentinel.id = 'sentinel';
         sentinel.style.height = '20px';
@@ -136,85 +150,98 @@ function renderMoreQuestions() {
 }
 
 function setupInfiniteScroll(target) {
-const observer = new
-IntersectionObserver((entries) => {
-if (entries[0].isIntersecting) {
-observer.disconnect();
-//Dejamos de observar este centinela 
-renderMoreQuestions();
-}
-}, { rootMargin: '200px' }); 
-// Carga 200px antes de llegar al final para que sea fluido
-observer. observe(target);
+    const observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            observer.disconnect();
+            renderMoreQuestions();
+        }
+    }, { rootMargin: '200px' });
+
+    observer.observe(target);
 }
 
+// ── Editor de pregunta ───────────────────────────────────────
 async function abrirEditorCompleto(id) {
     const q = await db.preguntas.get(id);
     if (!q) return;
 
     document.getElementById('edit-text').value = q.pregunta;
-    const optsContainer = document.getElementById('edit-options-list');
-    
-    // Limpiamos y añadimos título
-    optsContainer.innerHTML = '<label style="color:var(--muted); font-size:12px; display:block; margin-bottom:10px;">OPCIONES (Marca la  - opcional)</label>';
 
+    const optsContainer = document.getElementById('edit-options-list');
+    optsContainer.innerHTML = '';
+
+    // Label
+    const label = document.createElement('label');
+    label.className = 'edit-label';
+    label.style.cssText = 'display:block; margin-bottom:10px;';
+    label.textContent = 'OPCIONES (marca la correcta — opcional)';
+    optsContainer.appendChild(label);
+
+    // Opciones A–D
     q.opciones.forEach((opt, i) => {
         const div = document.createElement('div');
-        div.className = 'edit-option-row'; // Usamos la clase nueva del CSS
-        
-        div.innerHTML = `
-            <input type="radio" name="correcta" value="${i}" ${q.correcta === i ? 'checked' : ''} style="margin-top:5px;">
-            <textarea class="edit-opt-input edit-opt-textarea" rows="2">${opt}</textarea>
-        `;
+        div.className = 'edit-option-row';
+
+        const radio = document.createElement('input');
+        radio.type    = 'radio';
+        radio.name    = 'correcta';
+        radio.value   = i;
+        radio.checked = (q.correcta === i);
+        radio.style.marginTop = '5px';
+
+        const ta = document.createElement('textarea');
+        ta.className = 'edit-opt-input edit-opt-textarea';
+        ta.rows      = 2;
+        ta.value     = opt; // textContent — nunca innerHTML, evita XSS
+
+        ta.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = `${this.scrollHeight}px`;
+        });
+        setTimeout(() => { ta.style.height = `${ta.scrollHeight}px`; }, 10);
+
+        div.appendChild(radio);
+        div.appendChild(ta);
         optsContainer.appendChild(div);
     });
 
-    // Opción especial: ninguna respuesta correcta
+    // Opción "ninguna respuesta correcta"
     const noneDiv = document.createElement('div');
     noneDiv.className = 'edit-option-row';
-    noneDiv.style.borderColor = q.correcta === null || q.correcta === undefined
-        ? 'var(--wrong)' : '';
-    noneDiv.innerHTML = `
-        <input type="radio" name="correcta" value="none"
-            ${(q.correcta === null || q.correcta === undefined) ? 'checked' : ''}
-            style="margin-top:2px; flex-shrink:0;">
-        <span style="font-size:14px; color:var(--muted); align-self:center;">
-            ❌ Ninguna respuesta es correcta
-        </span>
-    `;
+    if (q.correcta === null || q.correcta === undefined) {
+        noneDiv.style.borderColor = 'var(--wrong)';
+    }
+
+    const noneRadio = document.createElement('input');
+    noneRadio.type    = 'radio';
+    noneRadio.name    = 'correcta';
+    noneRadio.value   = 'none';
+    noneRadio.checked = (q.correcta === null || q.correcta === undefined);
+    noneRadio.style.cssText = 'margin-top:2px; flex-shrink:0;';
+
+    const noneLabel = document.createElement('span');
+    noneLabel.style.cssText = 'font-size:14px; color:var(--muted); align-self:center;';
+    noneLabel.textContent = '❌ Ninguna respuesta es correcta';
+
+    noneDiv.appendChild(noneRadio);
+    noneDiv.appendChild(noneLabel);
     optsContainer.appendChild(noneDiv);
 
-    // Evento para que los textareas crezcan solos al escribir (opcional pero pro)
-    const textareas = optsContainer.querySelectorAll('textarea');
-    textareas.forEach(tx => {
-        tx.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        });
-        // Ajustar altura inicial
-        setTimeout(() => {
-            tx.style.height = (tx.scrollHeight) + 'px';
-        }, 10);
-    });
-
-    document.getElementById('save-edit').onclick = () => guardarCambios(id);
+    document.getElementById('save-edit').onclick   = () => guardarCambios(id);
     document.getElementById('cancel-edit').onclick = () => showScreen('admin-list');
 
     showScreen('edit-screen');
 }
 
-
 async function guardarCambios(id) {
-    const nuevoTexto = document.getElementById('edit-text').value.trim();
-
-    // Scope al formulario para evitar capturar inputs de otras pantallas
+    const nuevoTexto    = document.getElementById('edit-text').value.trim();
     const optsContainer = document.getElementById('edit-options-list');
+
     const nuevasOpciones = Array.from(
         optsContainer.querySelectorAll('.edit-opt-input')
     ).map(input => input.value);
 
-    // Null check: si ningún radio está marcado, no guardar
-    const checkedRadio = optsContainer.querySelector('input[name="correcta"]:checked');
+    const checkedRadio  = optsContainer.querySelector('input[name="correcta"]:checked');
     const nuevaCorrecta = (!checkedRadio || checkedRadio.value === 'none')
         ? null
         : parseInt(checkedRadio.value);
@@ -225,10 +252,10 @@ async function guardarCambios(id) {
         correcta: nuevaCorrecta
     });
 
+    homeDirty = true;
     await initAdminList();
     showScreen('admin-list');
-    showToast('Pregunta actualizada ✓');
     showToast(nuevaCorrecta === null
-        ? 'Pregunta actualizada (sin respuesta correcta) ✓'
+        ? 'Guardada sin respuesta correcta ✓'
         : 'Pregunta actualizada ✓');
 }

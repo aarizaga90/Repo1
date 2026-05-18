@@ -1,214 +1,135 @@
 // ═══════════════════════════════════════════════
-//  OposTest — PWA
-//  Fuente única de verdad: IndexedDB (Dexie, ver db.js)
+//  OposTest — Lógica principal
+//  Datos persistentes: IndexedDB via Dexie (db.js)
+//  DEBUG y log() definidos en db.js
 // ═══════════════════════════════════════════════
 
-// ─── CONFIG ───────────────────────────────────────
+// ─── Estado global ────────────────────────────
 let SMART_SESSION_LENGTH = 20;
+let selectedMode    = 'all';
+let selectedTemario = 'todos';
+let answered        = false;
+let homeDirty       = true;  // true = home necesita refrescar al volver
+let timerInterval   = null;
+let examTimerInterval = null;
+let secondsElapsed  = 0;
+let toastTimer      = null;
 
-// ─── CONFIG ───────────────────────────────────────
-// Esperar a que el DOM esté cargado para evitar errores de referencia
+let session = {
+    mode:            'all',
+    queue:           [],
+    index:           0,
+    correct:         0,
+    wrong:           0,
+    wrongAnswers:    [],
+    currentQuestion: null,
+    nextBuffer:      null,
+    lastId:          null
+};
+
+// ═══════════════════════════════════════════════
+//  EVENTOS DOM
+// ═══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
 
-// 1. Configuración de eventos al cargar el DOM
-        const container = document.getElementById('home-actions');
-        if (!container) return;
+    // ── Botones de modo (delegación en #home-actions) ──
+    const homeActions = document.getElementById('home-actions');
+    if (!homeActions) return;
 
-        container.addEventListener('click', (e) => {
-            // Buscamos si el clic fue en un botón de modo o dentro de uno
-            const btn = e.target.closest('.mode-btn');
-            if (!btn) return;
-
-            const mode = btn.dataset.mode;
-            const target = btn.dataset.target;
-
-            if (mode && target) {
-                selectModeSecure(btn, mode, target);
-            }
-        });
-
-        // Opcional: Activar el primero por defecto de forma segura
-        const defaultBtn = document.querySelector('.mode-btn[data-mode="all"]');
-        if (defaultBtn) selectModeSecure(defaultBtn, 'all', 'top');
-
-    // 2. Botón Empezar
-    const startBtn = document.getElementById('start-btn');
-    if (startBtn) {
-        startBtn.addEventListener('click', () => {
-            startStudy();
-        });
-    }
-
-    const clearHistoryBtn = document.getElementById('clear-history-btn');
-    if(clearHistoryBtn) {
-        clearHistoryBtn.addEventListener('click', clearHistory)
-    }
-
-    // 3. Botón Historial
-    const historyBtn = document.getElementById('history-btn');
-    if (historyBtn) {
-        historyBtn.addEventListener('click', () => {
-            showScreen('history');
-        });
-    }
-
-    // 2. Pantalla de Estudio: Botón Siguiente
-    const nextBtn = document.getElementById('next-btn');
-    if (nextBtn) {
-        nextBtn.addEventListener('click', nextQuestion);
-    }
-
-    // 3. Pantalla de Resultados: Volver al inicio y refrescar
-    const finishBtn = document.getElementById('finish-btn');
-    if (finishBtn) {
-        finishBtn.addEventListener('click', () => {
-            showScreen('home');
-            if (typeof refreshHome === 'function') refreshHome();
-        });
-    }
-
-    // 4. Pantalla de Resultados: Repetir sesión
-    const retryBtn = document.getElementById('retry-btn');
-    if (retryBtn) {
-        retryBtn.addEventListener('click', startStudy);
-    }
-
-    // 1. Abrir el panel de importación
-    const openImportBtn = document.getElementById('open-import-btn');
-    if (openImportBtn) {
-        openImportBtn.addEventListener('click', () => {
-            if (typeof openImport === 'function') openImport();
-        });
-    }
-
-    // 2. Cerrar el panel (botón Cancelar)
-    const closeImportBtn = document.getElementById('close-import-btn');
-    if (closeImportBtn) {
-        closeImportBtn.addEventListener('click', () => {
-            if (typeof closeImport === 'function') closeImport();
-        });
-    }
-
-    // 3. Procesar el archivo seleccionado (el input invisible)
-    const fileInput = document.getElementById('file-input');
-    if (fileInput) {
-        fileInput.addEventListener('change', (event) => {
-            if (typeof handleFileImport === 'function') handleFileImport(event);
-        });
-    }
-
-    // 4. Cerrar al hacer clic fuera del panel (en el fondo oscuro)
-    const importOverlay = document.getElementById('import-overlay');
-    if (importOverlay) {
-        importOverlay.addEventListener('click', (event) => {
-            // Solo cerramos si se hace clic en el fondo, no en el cuadro blanco
-            if (event.target === importOverlay) {
-                if (typeof closeImport === 'function') closeImport();
-            }
-        });
-    }
-
-    //boton gestion preguntas
-    const adminBtn = document.getElementById('admin-btn');
-if (adminBtn) {
-    adminBtn.addEventListener('click', () => {
-        showScreen('admin-list'); // Cambia a la pantalla de lista
-        if (typeof initAdminList === 'function') {
-            initAdminList(); // Carga las 700 preguntas con scroll infinito
-        }
-    });
-}
-
-// 1. Vincular el nuevo botón (pon esto dentro del DOMContentLoaded)
-const finishEarlyBtn = document.getElementById('finish-early-btn');
-if (finishEarlyBtn) {
-    finishEarlyBtn.addEventListener('click', () => {
-        showModal("¿Quieres terminar la sesión y ver los resultados ahora?", {
-            confirmText: 'Ver resultados',
-            cancelText: 'Seguir',
-            onConfirm: () => showResults()
-        });
-    });
-}
-
-// Botón "Revisar fallos"
-    document.getElementById('review-btn')?.addEventListener('click', () => {
-        renderReview();
-        showScreen('review');
+    homeActions.addEventListener('click', (e) => {
+        const btn = e.target.closest('.mode-btn');
+        if (!btn) return;
+        const { mode, target } = btn.dataset;
+        if (mode && target) selectModeSecure(btn, mode, target);
     });
 
-// Back desde review → volver a resultados
+    const defaultBtn = document.querySelector('.mode-btn[data-mode="all"]');
+    if (defaultBtn) selectModeSecure(defaultBtn, 'all', 'top');
+
+    // ── Home ──────────────────────────────────────────
+    document.getElementById('start-btn')
+        ?.addEventListener('click', startStudy);
+    document.getElementById('history-btn')
+        ?.addEventListener('click', () => showScreen('history'));
+    document.getElementById('admin-btn')
+        ?.addEventListener('click', () => { showScreen('admin-list'); initAdminList(); });
+    document.getElementById('clear-history-btn')
+        ?.addEventListener('click', clearHistory);
+    document.getElementById('open-import-btn')
+        ?.addEventListener('click', openImport);
+
+    // ── Import ────────────────────────────────────────
+    document.getElementById('close-import-btn')
+        ?.addEventListener('click', closeImport);
+    document.getElementById('file-input')
+        ?.addEventListener('change', handleFileImport);
+    document.getElementById('import-overlay')
+        ?.addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeImport();
+        });
+
+    // ── Study ─────────────────────────────────────────
+    document.getElementById('next-btn')
+        ?.addEventListener('click', nextQuestion);
+    document.getElementById('finish-early-btn')
+        ?.addEventListener('click', () => {
+            showModal('¿Quieres terminar la sesión y ver los resultados ahora?', {
+                confirmText: 'Ver resultados',
+                cancelText:  'Seguir',
+                onConfirm:   () => showResults()
+            });
+        });
+
+    // ── Results ───────────────────────────────────────
+    document.getElementById('finish-btn')
+        ?.addEventListener('click', () => showScreen('home'));
+    document.getElementById('retry-btn')
+        ?.addEventListener('click', startStudy);
+    document.getElementById('review-btn')
+        ?.addEventListener('click', () => { renderReview(); showScreen('review'); });
+
+    // ── Navegación global (back-to-home, back-to-results) ──
     document.addEventListener('click', (e) => {
+        // Volver a resultados desde revisión
         if (e.target.closest('.back-to-results')) {
             showScreen('results');
-        }
-    });
-
-// 2. Modificar la flecha de atrás para que no borre t.odo sin avisar
-document.addEventListener('click', (e) => {
-const btn = e.target.closest('.back-to-home');
-if(!btn) return;
-
-        // Si estamos en la pantalla de estudio y hay preguntas respondidas...
-        const currentScreen = document.querySelector('.screen.active').id;
-    if (currentScreen === 'study') {
-        // Examen en curso
-        if (session.isExam) {
-            showModal("¿Quieres abandonar el examen? Perderás todo el progreso.", {
-                confirmText: 'Abandonar',
-                cancelText: 'Seguir',
-                onConfirm: () => {
-                    stopExamTimer();
-                    //homeDirty = true;
-                    showScreen('home');
-                }
-            });
             return;
         }
-        // Sesión de estudio con respuestas
-        if (session.correct > 0 || session.wrong > 0) {
-            showModal("¿Quieres terminar la sesión y ver los resultados?", {
-                confirmText: 'Ver resultados',
-                cancelText: 'Seguir',
-                onConfirm: () => showResults()
-            });
-            return;
+
+        if (!e.target.closest('.back-to-home')) return;
+
+        const currentScreen = document.querySelector('.screen.active')?.id;
+        if (currentScreen === 'study') {
+            if (session.isExam) {
+                showModal('¿Quieres abandonar el examen? Perderás todo el progreso.', {
+                    confirmText: 'Abandonar',
+                    cancelText:  'Seguir',
+                    onConfirm:   () => { stopExamTimer(); showScreen('home'); }
+                });
+                return;
+            }
+            if (session.correct > 0 || session.wrong > 0) {
+                showModal('¿Quieres terminar la sesión y ver los resultados?', {
+                    confirmText: 'Ver resultados',
+                    cancelText:  'Seguir',
+                    onConfirm:   () => showResults()
+                });
+                return;
+            }
         }
-    }
         showScreen('home');
     });
 });
-
-// ─── ESTADO EN MEMORIA ────────────────────────────
-// Los datos persistentes viven en Dexie. Aquí solo vive la sesión actual.
-let selectedMode = 'all'; // 'all' | 'shuffle' | 'smart' | 'wrong' | 'unseen'
-let selectedTemario = 'todos'; // 'todos' | 'común' | 'específico'
-let answered = false;
-let examTimerInterval = null; // temporizador para examen
-
-let session = {
-    mode: 'all',
-    queue: [],            // para modos no-smart: array de preguntas completas
-    index: 0,
-    correct: 0,
-    wrong: 0,
-    currentQuestion: null,
-    nextBuffer: null,     // precarga para modo smart
-    lastId: null
-};
 
 // ═══════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════
 async function boot() {
-    // Seed inicial: si no hay preguntas en la DB, volcamos DEFAULT_QUESTIONS
     const pregCount = await db.preguntas.count();
     if (pregCount === 0 && typeof DEFAULT_QUESTIONS !== 'undefined' && DEFAULT_QUESTIONS.length > 0) {
         await db.preguntas.bulkPut(DEFAULT_QUESTIONS);
-    }   
-
+    }
     await refreshHome();
-    
     initServiceWorker();
 }
 
@@ -218,145 +139,109 @@ async function boot() {
 async function selectModeSecure(el, mode, target) {
     if (!mode) return;
 
-    // 1. Clases en botones
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
     el.classList.add('selected');
-
     selectedMode = mode;
-    console.log("📍 Modo cambiado a:", selectedMode);
+    log('Modo seleccionado:', mode);
 
-    // 2. Identificar paneles
-    const pTop = document.getElementById('settings-top');
+    const pTop    = document.getElementById('settings-top');
     const pBottom = document.getElementById('settings-bottom');
-    const activePanel = (target === 'top') ? pTop : pBottom;
-    const inactivePanel = (target === 'top') ? pBottom : pTop;
+    const activePanel   = target === 'top' ? pTop : pBottom;
+    const inactivePanel = target === 'top' ? pBottom : pTop;
 
-    // 3. Cerrar el panel que no estamos usando
     if (inactivePanel) inactivePanel.classList.remove('active');
 
-    // 4. Datos del banco
-    const totalPregs = (typeof db !== 'undefined') ? await db.preguntas.count() : 200;
-    
+    const totalPregs = typeof db !== 'undefined' ? await db.preguntas.count() : 200;
+
     const temarioSelectorHTML = `
-    <div class="control-group" style="flex: 1 1 200px; min-width: 200px;">
-        <label style="font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; text-transform: uppercase;">Bloque:</label>
-        <select id="filter-temario" style="width: 100%; padding: 8px; border-radius: 6px; background: #1e1e2e; color: var(--text); border: 1px solid var(--accent-dim); font-size: 14px;">
-            <option value="todos">📚 Todos</option>
-            <option value="común">📘 Común</option>
-            <option value="específico">📙 Específico</option>
-        </select>
-    </div>
-`;
-    
+        <div class="control-group" style="flex:1 1 200px; min-width:200px;">
+            <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px; text-transform:uppercase;">Bloque:</label>
+            <select id="filter-temario" style="width:100%; padding:8px; border-radius:6px; background:#1e1e2e; color:var(--text); border:1px solid var(--accent-dim); font-size:14px;">
+                <option value="todos">📚 Todos</option>
+                <option value="común">📘 Común</option>
+                <option value="específico">📙 Específico</option>
+            </select>
+        </div>`;
+
+    const rangeHTML = `
+        <div class="control-group" style="flex:0 1 auto; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); height:38px;">
+            <span style="font-size:12px; color:var(--muted);">Rango:</span>
+            <input type="number" id="range-start" value="1" style="width:55px; border:none; background:transparent; color:var(--accent); font-weight:bold; text-align:center;">
+            <span style="color:var(--muted);">-</span>
+            <input type="number" id="range-end" value="${totalPregs}" style="width:55px; border:none; background:transparent; color:var(--accent); font-weight:bold; text-align:center;">
+        </div>`;
+
     const configs = {
-        'all': {
-            desc: "Estudio secuencial por rango.",
-            html: `
-        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-            ${temarioSelectorHTML}
-            <div class="control-group" style="flex: 0 1 auto; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); height: 38px;">
-                <span style="font-size: 12px; color: var(--muted);">Rango:</span>
-                <input type="number" id="range-start" value="1" style="width: 55px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
-                <span style="color: var(--muted);">-</span>
-                <input type="number" id="range-end" value="${totalPregs}" style="width: 55px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
-            </div>
-        </div>`
+        all: {
+            desc: 'Estudio secuencial por rango.',
+            html: `<div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">${temarioSelectorHTML}${rangeHTML}</div>`
         },
-        'exam': {
-            desc: "Simulacro oficial con tiempo limitado y corrección al final.",
-            html:`
+        exam: {
+            desc: 'Simulacro oficial · 100 preguntas proporcionales · bloque 450-500 al final.',
+            html: `
                 <div style="display:flex; gap:10px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; align-items:flex-end;">
-                <div style="flex:1;">
-                <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">MINUTOS</label>
-    <input type="number" id="exam-time" value="75" min="10" max="180"
-           style="width:100%; background:transparent; border:1px solid #444;
-                       color:var(--accent); text-align:center; border-radius:4px;
-                       padding:8px; font-size:16px;">
-    </div>
-</div>
-    <p style="font-size:11px; color:#ff9f43; margin-top:8px;">
-        ⚠️ Distribución proporcional automática · Bloque 450-500 agrupado al final · Sin corrección inmediata.
-    </p>`
-},
-        'smart': {
-            desc: "Prioridad a fallos y nuevas.",
-            html: `
-        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-            ${temarioSelectorHTML}
-            <div class="control-group" style="flex: 0 1 auto; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); height: 38px;">
-                <span style="font-size: 12px; color: var(--muted);">Cantidad:</span>
-                <input type="number" id="smart-limit" value="20" min="1" max="${totalPregs}" style="width: 50px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
-                <label style="display: flex; allign-items: center; gap: 6px; font-size: 12px">
-                <input type="checkbox" id="smart-infinite">♾️
-                </label>
-            </div>
-        </div>`
+                    <div style="flex:1;">
+                        <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">MINUTOS</label>
+                        <input type="number" id="exam-time" value="75" min="10" max="180"
+                            style="width:100%; background:transparent; border:1px solid #444; color:var(--accent); text-align:center; border-radius:4px; padding:8px; font-size:16px;">
+                    </div>
+                </div>
+                <p style="font-size:11px; color:#ff9f43; margin-top:8px;">⚠️ Sin corrección inmediata · Resultados al entregar.</p>`
         },
-        'shuffle': { desc: "Mezcla aleatoria total, con opcion a elegir rango.",
+        smart: {
+            desc: 'Prioridad a fallos y preguntas nuevas.',
             html: `
-            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-            ${temarioSelectorHTML}
-             <div class="control-group" style="flex: 0 1 auto; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); height: 38px;">
-                <span style="font-size: 12px; color: var(--muted);">Rango:</span>
-                <input type="number" id="range-start" value="1" style="width: 55px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
-                <span style="color: var(--muted);">-</span>
-                <input type="number" id="range-end" value="${totalPregs}" style="width: 55px; border: none; background: transparent; color: var(--accent); font-weight: bold; text-align: center;">
-            </div>
-            </div>` },
-        'wrong': { desc: "Repasa tus errores.", html: `<div style="display: flex; flex-wrap: wrap; gap: 15px;">${temarioSelectorHTML}</div>` },
-        'unseen': { desc: "Preguntas nuevas.", html: `<div style="display: flex; flex-wrap: wrap; gap: 15px;">${temarioSelectorHTML}</div>` }
+                <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
+                    ${temarioSelectorHTML}
+                    <div class="control-group" style="flex:0 1 auto; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); height:38px;">
+                        <span style="font-size:12px; color:var(--muted);">Cantidad:</span>
+                        <input type="number" id="smart-limit" value="20" min="1" max="${totalPregs}" style="width:50px; border:none; background:transparent; color:var(--accent); font-weight:bold; text-align:center;">
+                        <label style="display:flex; align-items:center; gap:6px; font-size:12px;">
+                            <input type="checkbox" id="smart-infinite"> ♾️
+                        </label>
+                    </div>
+                </div>`
+        },
+        shuffle: {
+            desc: 'Mezcla aleatoria con opción a elegir rango.',
+            html: `<div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">${temarioSelectorHTML}${rangeHTML}</div>`
+        },
+        wrong:  { desc: 'Repasa tus errores.',   html: `<div style="display:flex; flex-wrap:wrap; gap:15px;">${temarioSelectorHTML}</div>` },
+        unseen: { desc: 'Preguntas sin responder.', html: `<div style="display:flex; flex-wrap:wrap; gap:15px;">${temarioSelectorHTML}</div>` }
     };
 
     const config = configs[mode];
+    if (!activePanel || !config) return;
 
-    if (activePanel && config) {
-        activePanel.innerHTML = `
-            <div class="panel-content" style="border-left: 3px solid var(--accent); padding: 5px 0 10px 15px;;">
-                <p style="margin:0 0 12px 0; font-size:12px; color:var(--muted); line-height:1.4;">${config.desc}</p>
-                <div class="panel-controls" style="display:block; color:var(--accent); font-weight:bold;">
-                    ${config.html}
-                </div>
+    activePanel.innerHTML = `
+        <div class="panel-content" style="border-left:3px solid var(--accent); padding:5px 0 10px 15px;">
+            <p style="margin:0 0 12px; font-size:12px; color:var(--muted); line-height:1.4;">${config.desc}</p>
+            <div class="panel-controls" style="display:block; color:var(--accent); font-weight:bold;">
+                ${config.html}
             </div>
-        `;
+        </div>`;
 
-        requestAnimationFrame(() => {
-            activePanel.classList.add('active');
-        });
+    requestAnimationFrame(() => activePanel.classList.add('active'));
 
-        // ─── NUEVO CÓDIGO AQUÍ: Lógica de actualización dinámica ───
-        const selector = activePanel.querySelector('#filter-temario');
-        if (selector) {
-            selector.addEventListener('change', async (e) => {
-                const val = e.target.value;
-                let count;
+    // Actualización dinámica al cambiar bloque
+    activePanel.querySelector('#filter-temario')?.addEventListener('change', async (e) => {
+        const val = e.target.value;
+        const count = val === 'todos'
+            ? await db.preguntas.count()
+            : await db.preguntas.where('temario').equals(val).count();
 
-                // 1. Contar cuántas preguntas hay de ese bloque
-                if (val === 'todos') {
-                    count = await db.preguntas.count();
-                } else {
-                    count = await db.preguntas.where('temario').equals(val).count();
-                }
+        log('Filtro temario:', val, '→', count, 'preguntas');
 
-                console.log(`📊 Filtro cambiado: ${val}. Disponibles: ${count}`);
+        const rStart = document.getElementById('range-start');
+        const rEnd   = document.getElementById('range-end');
+        if (rStart && rEnd) { rStart.value = 1; rEnd.value = count; rEnd.max = count; }
 
-                // 2. Actualizar inputs de rango (Modo All)
-                const rStart = document.getElementById('range-start');
-                const rEnd = document.getElementById('range-end');
-                if (rStart && rEnd) {
-                    rStart.value = 1;
-                    rEnd.value = count;
-                    rEnd.max = count;
-                }
-
-                // 3. Actualizar límite (Modo Smart)
-                const sLimit = document.getElementById('smart-limit');
-                if (sLimit) {
-                    sLimit.max = count;
-                    if (parseInt(sLimit.value) > count) sLimit.value = count;
-                }
-            });
+        const sLimit = document.getElementById('smart-limit');
+        if (sLimit) {
+            sLimit.max = count;
+            if (parseInt(sLimit.value) > count) sLimit.value = count;
         }
-    }
+    });
 }
 
 async function refreshHome() {
@@ -365,56 +250,45 @@ async function refreshHome() {
         db.stats.toArray()
     ]);
 
-    const done = allStats.length;
-    const totalCorrect = allStats.reduce((s, h) => s + (h.correct || 0), 0);
+    const done          = allStats.length;
+    const totalCorrect  = allStats.reduce((s, h) => s + (h.correct || 0), 0);
     const totalAnswered = allStats.reduce((s, h) => s + (h.correct || 0) + (h.wrong || 0), 0);
-    const pct = totalAnswered > 0 ? Math.round(totalCorrect / totalAnswered * 100) : null;
+    const pct           = totalAnswered > 0 ? Math.round(totalCorrect / totalAnswered * 100) : null;
 
     document.getElementById('stat-total').textContent = total;
-    document.getElementById('stat-pct').textContent = pct !== null ? pct + '%' : '—';
-    document.getElementById('stat-done').textContent = done;
+    document.getElementById('stat-pct').textContent   = pct !== null ? `${pct}%` : '—';
+    document.getElementById('stat-done').textContent  = done;
     document.getElementById('prog-label').textContent = `${done} / ${total}`;
-    document.getElementById('prog-fill').style.width = total > 0 ? (done / total * 100) + '%' : '0%';
+    document.getElementById('prog-fill').style.width  = total > 0 ? `${done / total * 100}%` : '0%';
 
     const rangeEnd = document.getElementById('range-end');
-    if (rangeEnd) {
-        rangeEnd.value = total;
-        rangeEnd.max = total;
-    }
+    if (rangeEnd) { rangeEnd.value = total; rangeEnd.max = total; }
 
-    const emptyEl = document.getElementById('empty-home');
+    const emptyEl   = document.getElementById('empty-home');
     const actionsEl = document.getElementById('home-actions');
-    if (total === 0) {
-        emptyEl.style.display = 'block';
-        actionsEl.style.display = 'none';
-    } else {
-        emptyEl.style.display = 'none';
-        actionsEl.style.display = 'block';
-    }
+    emptyEl.style.display   = total === 0 ? 'block' : 'none';
+    actionsEl.style.display = total === 0 ? 'none'  : 'block';
 }
 
 function getQuestionCode(q) {
-    if (!q || !q.temario || q.numero_temario === undefined) return "S/N";
-
-    // Sacamos la inicial: "común" -> "C", "específico" -> "E"
+    if (!q || !q.temario || q.numero_temario === undefined) return 'S/N';
     const letra = q.temario.toLowerCase().startsWith('e') ? 'E' : 'C';
     return `${q.numero_temario}-${letra}`;
 }
 
 // ═══════════════════════════════════════════════
-//  STUDY — entrada principal (ahora solo enruta)
+//  STUDY — enrutador
 // ═══════════════════════════════════════════════
 async function startStudy() {
     const total = await db.preguntas.count();
-    if (total === 0) { showToast("No hay preguntas cargadas"); return; }
+    if (total === 0) { showToast('No hay preguntas cargadas'); return; }
 
-    const temarioInput = document.getElementById('filter-temario');
-    selectedTemario = temarioInput ? temarioInput.value : 'todos';
+    selectedTemario = document.getElementById('filter-temario')?.value ?? 'todos';
 
     session = {
-        mode: selectedMode,
-        queue: [], index: 0, correct: 0, wrong: 0,
-        wrongAnswers: [], currentQuestion: null, nextBuffer: null, lastId: null
+        mode: selectedMode, queue: [], index: 0,
+        correct: 0, wrong: 0, wrongAnswers: [],
+        currentQuestion: null, nextBuffer: null, lastId: null
     };
     answered = false;
 
@@ -423,19 +297,16 @@ async function startStudy() {
     return startStandardSession();
 }
 
-// ═══════════════════════════════════════════════
-//  SMART
-// ═══════════════════════════════════════════════
+// ── Smart ──────────────────────────────────────
 async function startSmartSession() {
-    let query = selectedTemario !== 'todos'
+    const query = selectedTemario !== 'todos'
         ? db.preguntas.where('temario').equals(selectedTemario)
         : db.preguntas.toCollection();
 
     const totalDisponible = await query.count();
-    if (totalDisponible === 0) { showToast("No hay preguntas en la selección"); return; }
+    if (totalDisponible === 0) { showToast('No hay preguntas en la selección'); return; }
 
     const esInfinito = document.getElementById('smart-infinite')?.checked;
-
     if (esInfinito) {
         SMART_SESSION_LENGTH = Infinity;
     } else {
@@ -455,83 +326,60 @@ async function startSmartSession() {
     renderCurrentQuestion();
 }
 
-// ═══════════════════════════════════════════════
-//  EXAMEN
-// ═══════════════════════════════════════════════
+// ── Examen ─────────────────────────────────────
 async function startExamSession() {
-    const examMinutes  = parseInt(document.getElementById('exam-time')?.value) || 100;
+    const examMinutes  = parseInt(document.getElementById('exam-time')?.value) || 75;
     const TARGET_TOTAL = 100;
-    const MIN_TRAMO    = 10; // mínimo garantizado del bloque 450-500
+    const MIN_TRAMO    = 10;
 
-    // ── 1. Cargar y filtrar null-correcta ──────────────────────
     const [allComun, allEspec] = await Promise.all([
         db.preguntas.where('temario').equals('común').toArray(),
         db.preguntas.where('temario').equals('específico').toArray()
     ]);
-    
-    // Filtrar preguntas sin respuesta correcta
+
     const tieneRespuesta = q => q.correcta !== null && q.correcta !== undefined;
     const comunValid = allComun.filter(tieneRespuesta);
     const especValid = allEspec.filter(tieneRespuesta);
 
     if (comunValid.length + especValid.length === 0) {
-        showToast("No hay preguntas disponibles");
+        showToast('No hay preguntas disponibles');
         return;
     }
 
-    // ── 2. Distribución proporcional ───────────────────────────
+    // Distribución proporcional
     const grandTotal = comunValid.length + especValid.length;
-    const numComun = Math.round(TARGET_TOTAL * comunValid.length / grandTotal);
-    const numEspec = TARGET_TOTAL - numComun;
+    const numComun   = Math.round(TARGET_TOTAL * comunValid.length / grandTotal);
+    const numEspec   = TARGET_TOTAL - numComun;
 
-    // ── 3. Bloque preguntas prácticas del específico ───────────────────────
+    // Bloque 450-500 (preguntas prácticas)
     const tramo450 = especValid
         .filter(q => q.numero_temario >= 450 && q.numero_temario <= 500)
-        .sort(() => Math.random() - 0.5); // mezcla antes de seleccionar
+        .sort(() => Math.random() - 0.5);
 
     const selectedTramo = tramo450
         .slice(0, Math.min(MIN_TRAMO, tramo450.length))
-        .sort((a, b) => a.numero_temario - b.numero_temario); // ordenar para agrupar enunciados compartidos
+        .sort((a, b) => a.numero_temario - b.numero_temario); // agrupa enunciados compartidos
 
-    // ── 4. Resto del específico (excluyendo el tramo 450-500) ──
     const restoEspec = especValid
         .filter(q => q.numero_temario < 450)
         .sort(() => Math.random() - 0.5)
         .slice(0, numEspec - selectedTramo.length);
 
-    // ── 5. Común — aleatorio puro ──────────────────────────────
     const selectedComun = comunValid
         .sort(() => Math.random() - 0.5)
         .slice(0, numComun);
 
-    // ── 6. Construir pool final ────────────────────────────────
-    // [común + específico base] en orden aleatorio
-    // + [bloque 450-500] al final, ordenado por número (enunciados agrupados)
-    const poolBase = [...selectedComun, ...restoEspec]
-        .sort(() => Math.random() - 0.5);
+    const poolBase  = [...selectedComun, ...restoEspec].sort(() => Math.random() - 0.5);
+    const examPool  = [...poolBase, ...selectedTramo];
 
-    const examPool = [...poolBase, ...selectedTramo];
+    if (examPool.length === 0) { showToast('No hay preguntas disponibles'); return; }
 
-    if (examPool.length === 0) {
-        showToast("No hay preguntas disponibles");
-        return;
-    }
-
-    console.log(
-        `📝 Examen: ${selectedComun.length} comunes + ` +
-        `${restoEspec.length} específicas + ` +
-        `${selectedTramo.length} del bloque 450-500 = ` +
-        `${examPool.length} preguntas`
-    );
+    log(`Examen: ${selectedComun.length}C + ${restoEspec.length}E + ${selectedTramo.length} bloque = ${examPool.length}`);
 
     Object.assign(session, {
-        mode: 'exam',
-        queue: examPool,
-        isExam: true,
-        answers: {},
-        timeLeft: examMinutes * 60,
-        originalTime: examMinutes * 60,
-        currentQuestion: examPool[0]
+        mode: 'exam', queue: examPool, isExam: true,
+        answers: {}, timeLeft: examMinutes * 60,
+        originalTime: examMinutes * 60, currentQuestion: examPool[0]
     });
 
     startExamTimer();
@@ -539,9 +387,7 @@ async function startExamSession() {
     renderCurrentQuestion();
 }
 
-// ═══════════════════════════════════════════════
-//  MODOS ESTÁNDAR (all, shuffle, wrong, unseen)
-// ═══════════════════════════════════════════════
+// ── Modos estándar ─────────────────────────────
 async function startStandardSession() {
     const [allQuestions, allStats] = await Promise.all([
         db.preguntas.orderBy('id').toArray(),
@@ -549,15 +395,12 @@ async function startStandardSession() {
     ]);
     const statsMap = new Map(allStats.map(s => [s.id, s]));
 
-    // Filtrar preguntas sin respuesta correcta
     let pool = allQuestions.filter(q => q.correcta !== null && q.correcta !== undefined);
 
-    // Filtrar por temario
     if (selectedTemario !== 'todos') {
         pool = pool.filter(q => q.temario === selectedTemario);
     }
 
-    // Filtrar según modo
     pool = applyModeFilter(pool, statsMap);
 
     if (pool.length === 0) {
@@ -569,68 +412,54 @@ async function startStandardSession() {
         return;
     }
 
-    session.queue = pool;
+    session.queue           = pool;
     session.currentQuestion = pool[0];
     startTimer();
     showScreen('study');
     renderCurrentQuestion();
 }
 
-// ═══════════════════════════════════════════════
-//  HELPER — filtro por modo
-// ═══════════════════════════════════════════════
 function applyModeFilter(pool, statsMap) {
-    const getRangeSlice = (arr) => {
-        const startVal = parseInt(document.getElementById('range-start')?.value, 10) || 1;
-        const endVal   = parseInt(document.getElementById('range-end')?.value, 10) || arr.length;
-        return arr.slice(Math.max(0, startVal - 1), Math.min(arr.length, endVal));
+    const getRange = (arr) => {
+        const s = parseInt(document.getElementById('range-start')?.value, 10) || 1;
+        const e = parseInt(document.getElementById('range-end')?.value, 10)   || arr.length;
+        return arr.slice(Math.max(0, s - 1), Math.min(arr.length, e));
     };
 
     switch (selectedMode) {
-        case 'all':
-            return getRangeSlice(pool);
-        case 'shuffle':
-            return getRangeSlice(pool).sort(() => Math.random() - 0.5);
-        case 'wrong':
-            return pool.filter(q => (statsMap.get(q.id)?.wrong || 0) > 0);
-        case 'unseen':
-            return pool.filter(q => !statsMap.has(q.id));
-        default:
-            return pool;
+        case 'all':     return getRange(pool);
+        case 'shuffle': return getRange(pool).sort(() => Math.random() - 0.5);
+        case 'wrong':   return pool.filter(q => (statsMap.get(q.id)?.wrong || 0) > 0);
+        case 'unseen':  return pool.filter(q => !statsMap.has(q.id));
+        default:        return pool;
     }
 }
 
 // ═══════════════════════════════════════════════
-//  STUDY — render
+//  RENDER
 // ═══════════════════════════════════════════════
 function renderCurrentQuestion() {
-    const q = session.currentQuestion;
+    const q         = session.currentQuestion;
     const container = document.getElementById('question-scroll');
     if (!container || !q) return;
 
     answered = false;
 
-    const idx = session.index;
-    const isSmart = session.mode === 'smart';
-    const isExam = session.mode === 'exam';
-    const total = isSmart ? SMART_SESSION_LENGTH : session.queue.length;
+    const idx       = session.index;
+    const isSmart   = session.mode === 'smart';
+    const isExam    = session.mode === 'exam';
+    const total     = isSmart ? SMART_SESSION_LENGTH : session.queue.length;
     const esInfinito = total === Infinity;
-    const code = getQuestionCode(q);
+    const code      = getQuestionCode(q);
 
-    // 1. Actualización de contadores y textos
-    document.getElementById('q-num').textContent = esInfinito
-        ? `Pregunta ${idx + 1}`
-        : `Pregunta ${idx + 1} de ${total}`;
-    document.getElementById('q-text').textContent = q.pregunta || q.texto; // Soporte para ambos nombres de campo
-    document.getElementById('prog-current').textContent = `Pregunta ${idx + 1}`;
-    document.getElementById('prog-of').textContent = esInfinito ? '∞' : `de ${total}`;
-    document.getElementById('study-fill').style.width = esInfinito
-        ? '0%'
-        : (idx / total * 100) + '%';
+    // Contadores
+    document.getElementById('q-text').textContent      = q.pregunta || q.texto || '';
+    document.getElementById('prog-current').textContent = code;                             // "181-C" en el header izquierda
+    document.getElementById('prog-of').textContent      = esInfinito ? String(idx + 1) : `${idx + 1} / ${total}`; // "15 / 698" derecha
+    document.getElementById('study-fill').style.width   = esInfinito ? '0%' : `${idx / total * 100}%`;
     document.getElementById('question-scroll').scrollTop = 0;
-    document.querySelector('.question-num').textContent = `PREGUNTA ${code}`;
 
-    // 2. Gestión de Footer y Cronómetro
+    // Footers
     const answerFooter = document.getElementById('answer-footer');
     const examFooter   = document.getElementById('exam-footer');
 
@@ -639,46 +468,41 @@ function renderCurrentQuestion() {
         document.getElementById('study').classList.remove('footer-visible');
         updateExamTimerDisplay();
     } else {
-        examFooter.style.display = 'none';   // ocultar footer de examen
-        answerFooter.style.display = 'none'; // se mostrará al responder
+        examFooter.style.display   = 'none';
+        answerFooter.style.display = 'none';
         document.getElementById('study').classList.remove('footer-visible');
     }
 
-    // 3. Renderizado de opciones
-    const list = document.getElementById('options-list');
-    list.innerHTML = '';
+    // Opciones
+    const list    = document.getElementById('options-list');
     const letters = ['A', 'B', 'C', 'D'];
+    list.innerHTML = '';
 
     q.opciones.forEach((opt, i) => {
         const btn = document.createElement('button');
         btn.className = 'option';
-
-        // --- LÓGICA DE EXAMEN (Recordar respuesta) ---
-        if (isExam && session.answers[q.id] === i) {
-            btn.classList.add('selected-exam');
-        }
+        if (isExam && session.answers[q.id] === i) btn.classList.add('selected-exam');
 
         btn.innerHTML =
             `<span class="option-letter">${letters[i]}</span>` +
             `<span class="option-text"></span>`;
         btn.querySelector('.option-text').textContent = opt;
-        
         btn.onclick = () => selectAnswer(i);
-
         list.appendChild(btn);
     });
 
-    // 4. Inyectar botones de navegación (solo si es examen)
+    // Nav examen
     if (isExam) {
         document.getElementById('study').classList.add('footer-visible');
         updateExamNavigation(idx, total);
     }
 }
 
+// ── Examen: navegación ────────────────────────
 function updateExamNavigation(idx, total) {
     if (session.mode !== 'exam') return;
 
-    const footer = document.getElementById('exam-footer');
+    const footer      = document.getElementById('exam-footer');
     const respondidas = Object.keys(session.answers || {}).length;
     const sinResponder = total - respondidas;
 
@@ -689,25 +513,17 @@ function updateExamNavigation(idx, total) {
                 ${sinResponder > 0 ? `${sinResponder} sin responder` : '✓ Todas respondidas'}
             </div>
             <div class="exam-footer-nav">
-                <button id="exam-prev-btn" class="btn-nav" ${idx === 0 ? 'disabled' : ''}>
-                    ← Atrás
-                </button>
+                <button id="exam-prev-btn" class="btn-nav" ${idx === 0 ? 'disabled' : ''}>← Atrás</button>
                 <div class="exam-nav-center-col">
                     <button id="exam-finish-btn" class="btn-finish">Entregar</button>
                 </div>
-                <button id="exam-next-btn" class="btn-nav" ${idx === total - 1 ? 'disabled' : ''}>
-                    Siguiente →
-                </button>
+                <button id="exam-next-btn" class="btn-nav" ${idx === total - 1 ? 'disabled' : ''}>Siguiente →</button>
             </div>
-        </div>
-    `;
+        </div>`;
 
-    document.getElementById('exam-prev-btn')
-        ?.addEventListener('click', examPrevQuestion);
-    document.getElementById('exam-finish-btn')
-        ?.addEventListener('click', confirmFinishExam);
-    document.getElementById('exam-next-btn')
-        ?.addEventListener('click', examNextQuestion);
+    document.getElementById('exam-prev-btn')?.addEventListener('click', examPrevQuestion);
+    document.getElementById('exam-finish-btn')?.addEventListener('click', confirmFinishExam);
+    document.getElementById('exam-next-btn')?.addEventListener('click', examNextQuestion);
 }
 
 function examNextQuestion() {
@@ -727,37 +543,29 @@ function examPrevQuestion() {
 }
 
 function confirmFinishExam() {
-    const respondidas = Object.keys(session.answers || {}).length;
-    const total = session.queue.length;
+    const respondidas  = Object.keys(session.answers || {}).length;
+    const total        = session.queue.length;
     const sinResponder = total - respondidas;
 
     if (sinResponder > 0) {
         showModal(
-            `⚠️ Tienes ${sinResponder} pregunta${sinResponder !== 1 ? 's' : ''} sin responder.\n\nLas respuestas en blanco no restan, pero tampoco suman. ¿Seguro que quieres entregar?`,
-            {
-                confirmText: '📨 Entregar así',
-                cancelText: '← Seguir revisando',
-                onConfirm: () => finishExam()
-            }
+            `⚠️ Tienes ${sinResponder} pregunta${sinResponder !== 1 ? 's' : ''} sin responder.\n\nLas respuestas en blanco no restan. ¿Seguro que quieres entregar?`,
+            { confirmText: '📨 Entregar así', cancelText: '← Seguir', onConfirm: finishExam }
         );
     } else {
         showModal(
-            `✅ Has respondido las ${total} preguntas.\n\n¿Quieres entregar o prefieres repasar alguna respuesta antes?`,
-            {
-                confirmText: '📨 Entregar',
-                cancelText: '← Repasar',
-                onConfirm: () => finishExam()
-            }
+            `✅ Has respondido las ${total} preguntas.\n\n¿Entregar o repasar antes?`,
+            { confirmText: '📨 Entregar', cancelText: '← Repasar', onConfirm: finishExam }
         );
     }
 }
 
 async function finishExam() {
-    stopExamTimer(); // ← usa la función, no clearInterval directo
+    stopExamTimer();
 
     let aciertos = 0, fallos = 0, blancas = 0;
 
-    for (const q of session.queue) {  // ← for...of para poder usar await dentro
+    for (const q of session.queue) {
         const respuesta = session.answers[q.id];
         if (respuesta === undefined) {
             blancas++;
@@ -767,45 +575,38 @@ async function finishExam() {
         } else {
             fallos++;
             await recordAnswer(q.id, false);
-            session.wrongAnswers.push({
-                question: q,
-                chosen: respuesta,
-                correct: q.correcta
-            });
+            session.wrongAnswers.push({ question: q, chosen: respuesta, correct: q.correcta });
         }
     }
 
-    const notaFinal = Math.max(0, aciertos - fallos / 3).toFixed(2);
-
     showExamResults({
-        nota: notaFinal,
-        aciertos,
-        fallos,
-        blancas,
-        total: session.queue.length
+        nota:     Math.max(0, aciertos - fallos / 3).toFixed(2),
+        aciertos, fallos, blancas,
+        total:    session.queue.length
     });
 }
+
 function showExamResults({ nota, aciertos, fallos, blancas, total }) {
     const aprobado = parseFloat(nota) >= total / 2;
-    const elapsed = session.originalTime - Math.max(0, session.timeLeft || 0);
-    const mins = Math.floor(elapsed / 60);
-    const secs = elapsed % 60;
+    const elapsed  = session.originalTime - Math.max(0, session.timeLeft || 0);
+    const mins     = Math.floor(elapsed / 60);
+    const secs     = elapsed % 60;
 
-    document.getElementById('res-emoji').textContent = aprobado ? '🎓' : '📖';
-    document.getElementById('res-title').textContent = aprobado ? '¡Aprobado!' : 'No aprobado';
-    document.getElementById('res-sub').textContent =
-        `${aciertos} correctas · ${fallos} incorrectas · ${blancas} en blanco`;
-    document.getElementById('res-pct').textContent = nota;
+    document.getElementById('res-emoji').textContent   = aprobado ? '🎓' : '📖';
+    document.getElementById('res-title').textContent   = aprobado ? '¡Aprobado!' : 'No aprobado';
+    document.getElementById('res-sub').textContent     = `${aciertos} correctas · ${fallos} incorrectas · ${blancas} en blanco`;
+    document.getElementById('res-pct').textContent     = nota;
     document.getElementById('res-correct').textContent = aciertos;
-    document.getElementById('res-wrong').textContent = fallos;
-    document.getElementById('res-time').textContent =
-        `${mins}:${secs.toString().padStart(2, '0')}`;
-    document.getElementById('res-avg').textContent =
-        `${total > 0 ? (elapsed / total).toFixed(1) : 0}s`;
+    document.getElementById('res-wrong').textContent   = fallos;
+    document.getElementById('res-time').textContent    = `${mins}:${secs.toString().padStart(2, '0')}`;
+    document.getElementById('res-avg').textContent     = `${total > 0 ? (elapsed / total).toFixed(1) : 0}s`;
 
     showScreen('results');
 }
 
+// ═══════════════════════════════════════════════
+//  RESPUESTA
+// ═══════════════════════════════════════════════
 async function selectAnswer(chosen) {
     if (answered) return;
     answered = true;
@@ -813,40 +614,30 @@ async function selectAnswer(chosen) {
     const q = session.currentQuestion;
     if (!q) return;
 
+    // Salvaguarda: pregunta sin respuesta (no debería llegar aquí)
     if (!session.isExam && (q.correcta === null || q.correcta === undefined)) {
-        console.warn('Pregunta sin respuesta correcta en sesión:', q.id);
         nextQuestion();
         return;
     }
 
-    // SI ES MODO EXAMEN: Guardamos y pasamos
+    // Modo examen: guardar/anular respuesta sin feedback
     if (session.isExam) {
-        // --- LÓGICA DE ANULACIÓN ---
         if (session.answers[q.id] === chosen) {
-            // Si pincha la que ya está marcada, la borramos del mapa
             delete session.answers[q.id];
-            console.log(`Anulada respuesta de la pregunta ${q.id}`);
         } else {
-            // Si pincha una nueva (o no había nada), guardamos
             session.answers[q.id] = chosen;
         }
-
-        // Solo actualizar clases — sin re-render, sin animación
-        const opts = document.querySelectorAll('#options-list .option');
-        opts.forEach((btn, i) => {
+        document.querySelectorAll('#options-list .option').forEach((btn, i) => {
             btn.classList.toggle('selected-exam', session.answers[q.id] === i);
         });
-
-        // Actualizar contador del nav bar
         updateExamNavigation(session.index, session.queue.length);
-
-        answered = false; // permitir siguiente interacción
+        answered = false;
         return;
     }
 
-    // --- LÓGICA NORMAL (No examen) ---
+    // Modo estudio: feedback inmediato
     const correct = q.correcta;
-    const opts = document.querySelectorAll('.option');
+    const opts    = document.querySelectorAll('.option');
     opts.forEach(o => { o.classList.add('disabled'); o.onclick = null; });
 
     const isCorrect = chosen === correct;
@@ -857,24 +648,19 @@ async function selectAnswer(chosen) {
         opts[chosen].classList.add('selected-wrong');
         if (opts[correct]) opts[correct].classList.add('show-correct');
         session.wrong++;
-        session.wrongAnswers.push({
-            question: q,
-            chosen: chosen,
-            correct: correct
-        });
+        session.wrongAnswers.push({ question: q, chosen, correct });
     }
 
-    // Persistir la respuesta (estadística)
     try {
         await recordAnswer(q.id, isCorrect);
-    } catch(e) {
+    } catch (e) {
         console.error('Error guardando respuesta:', e);
     }
-    
-    //mostrar footer
-    document.getElementById('exam-footer').style.display = 'none';
+
+    document.getElementById('exam-footer').style.display   = 'none';
     document.getElementById('answer-footer').style.display = 'block';
     document.getElementById('study').classList.add('footer-visible');
+
     const isLast = session.mode === 'smart'
         ? session.index + 1 >= SMART_SESSION_LENGTH
         : session.index >= session.queue.length - 1;
@@ -882,164 +668,123 @@ async function selectAnswer(chosen) {
 }
 
 async function nextQuestion() {
-    console.log("⏭️ Click en Siguiente. Modo actual:", session.mode);
     if (session.mode === 'smart') {
         session.index++;
-        if (session.index >= SMART_SESSION_LENGTH) {
-            console.log("🏁 Fin de sesión smart.");
-            showResults();
-            return;
-        }
-        // Usamos el buffer precargado; si no está listo, cargamos en el momento
+        if (session.index >= SMART_SESSION_LENGTH) { showResults(); return; }
+
         let q = session.nextBuffer;
-        if (q) {
-            console.log("📦 Usando pregunta del BUFFER:", getQuestionCode(q));
-        } else {
-            console.warn("⚠️ Buffer vacío, calculando al vuelo...");
+        if (!q) {
+            log('Smart: buffer vacío, calculando al vuelo...');
             q = await getSmartNextQuestion();
         }
-        
-        session.nextBuffer = null;
-        session.currentQuestion = q;
-        session.lastId = q ? q.id : null;
 
-        prepareNextQuestion(); // precarga la siguiente
+        session.nextBuffer      = null;
+        session.currentQuestion = q;
+        session.lastId          = q?.id ?? null;
+        prepareNextQuestion();
         renderCurrentQuestion();
     } else {
-        // Modo normal
         session.index++;
-        console.log("📑 Siguiente pregunta secuencial. Nuevo índice:", session.index);
-        if (session.index >= session.queue.length) {
-            showResults();
-            return;
-        }
+        if (session.index >= session.queue.length) { showResults(); return; }
         session.currentQuestion = session.queue[session.index];
         renderCurrentQuestion();
     }
 }
 
 // ═══════════════════════════════════════════════
-//  SMART — selector de próxima pregunta
-//  60% prioridad a nuevas, 40% repaso ordenado por peso
+//  SMART — selección de próxima pregunta
+//  60% nuevas · 40% repaso por peso
 // ═══════════════════════════════════════════════
 async function getSmartNextQuestion() {
-    console.group("🔍 Buscando próxima pregunta Smart");
-
-    let query = (selectedTemario !== 'todos')
+    const query = selectedTemario !== 'todos'
         ? db.preguntas.where('temario').equals(selectedTemario)
         : db.preguntas.toCollection();
 
-    const allQuestions = await query.toArray();
-    const validQuestions = allQuestions.filter(
-        q => q.correcta !== null && q.correcta !== undefined
-    );
+    const validQuestions = (await query.toArray())
+        .filter(q => q.correcta !== null && q.correcta !== undefined);
 
-    if (validQuestions.length === 0) { console.groupEnd(); return null; }
+    if (validQuestions.length === 0) return null;
 
-    const allIds = validQuestions.map(q => q.id);
-    
+    const allIds   = validQuestions.map(q => q.id);
     const allStats = await db.stats.toArray();
-    
-    if (allIds.length === 0) {
-        console.groupEnd();
-        return null;
-    }
-
     const statsMap = new Map(allStats.map(s => [s.id, s]));
 
-    // 1. Filtrar candidatas (excluir la actual para no repetir)
     const candidatasIds = allIds.filter(id => id !== session.lastId);
-    if (candidatasIds.length === 0) return await db.preguntas.get(allIds[0]);
+    if (candidatasIds.length === 0) return db.preguntas.get(allIds[0]);
 
-    // 2. Separar en "Nuevas" y "Repaso"
     const nuevas = candidatasIds.filter(id => !statsMap.has(id));
     const repaso = allStats
         .filter(s => candidatasIds.includes(s.id) && ((s.wrong || 0) > 0 || (s.peso || 1) > 1))
         .sort((a, b) => (b.peso || 1) - (a.peso || 1));
 
-    console.log("📊 Estado del banco:", { total: allIds.length, nuevas: nuevas.length, repaso: repaso.length, lastId: session.lastId });
-    
+    log('Smart:', { total: allIds.length, nuevas: nuevas.length, repaso: repaso.length });
+
     let targetId;
     const azar = Math.random();
 
-    // LÓGICA DE DECISIÓN
     if (nuevas.length > 0 && (repaso.length === 0 || azar < 0.6)) {
-        // MODO NUEVAS: 60% de probabilidad o si no hay nada que repasar
-        // Forzamos aleatoriedad total sobre el array de nuevas
         targetId = nuevas[Math.floor(Math.random() * nuevas.length)];
-        console.log("🎲 Decisión: NUEVA al azar. ID elegido:", targetId);
-    }
-    else if (repaso.length > 0) {
-        // MODO REPASO: Elegimos entre las 3 con más peso para variar un poco
-        const topCount = Math.min(3, repaso.length);
-        const topCandidatas = repaso.slice(0, topCount);
-        targetId = topCandidatas[Math.floor(Math.random() * topCandidatas.length)].id;
-        console.log("🔄 Decisión: REPASO (Top 3). ID elegido:", targetId);
-    }
-    else {
-        // FALLBACK: Si no hay nuevas ni repaso con peso, aleatorio puro sobre t.odo el banco
+        log('Smart → NUEVA, id:', targetId);
+    } else if (repaso.length > 0) {
+        const top = repaso.slice(0, Math.min(3, repaso.length));
+        targetId  = top[Math.floor(Math.random() * top.length)].id;
+        log('Smart → REPASO, id:', targetId);
+    } else {
         targetId = candidatasIds[Math.floor(Math.random() * candidatasIds.length)];
-        console.log("⚠️ Decisión: FALLBACK aleatorio total. ID elegido:", targetId);
+        log('Smart → FALLBACK, id:', targetId);
     }
 
-    console.groupEnd();
-    return await db.preguntas.get(targetId);
+    return db.preguntas.get(targetId);
 }
 
-// Precarga en segundo plano — llena session.nextBuffer sin bloquear
 async function prepareNextQuestion() {
     try {
         session.nextBuffer = await getSmartNextQuestion();
-    } catch (e) {
+    } catch {
         session.nextBuffer = null;
-            console.log("Error localizando la siguiente pregunta");
     }
 }
 
 // ═══════════════════════════════════════════════
-//  RESPUESTA — único punto de persistencia de stats
+//  ESTADÍSTICAS
 // ═══════════════════════════════════════════════
 async function recordAnswer(qId, isCorrect) {
     const existing = await db.stats.get(qId);
-    const stat = existing || { id: qId, correct: 0, wrong: 0, racha: 0, peso: 1, last: 0 };
+    const stat     = existing || { id: qId, correct: 0, wrong: 0, racha: 0, peso: 1, last: 0 };
 
     stat.last = Date.now();
     if (isCorrect) {
         stat.correct = (stat.correct || 0) + 1;
-        stat.racha = (stat.racha || 0) + 1;
-        // Acierto: baja la prioridad de repaso (pero no a cero)
-        stat.peso = Math.max(0.1, (stat.peso || 1) * 0.5);
+        stat.racha   = (stat.racha   || 0) + 1;
+        stat.peso    = Math.max(0.1, (stat.peso || 1) * 0.5);
     } else {
         stat.wrong = (stat.wrong || 0) + 1;
         stat.racha = 0;
-        // Fallo: sube la prioridad (con tope para no desbordar)
-        stat.peso = Math.min(20, (stat.peso || 1) * 2.5);
+        stat.peso  = Math.min(20, (stat.peso || 1) * 2.5);
     }
 
     await db.stats.put(stat);
+    homeDirty = true;
 }
 
 // ═══════════════════════════════════════════════
-//  CRONÓMETRO
+//  CRONÓMETROS
 // ═══════════════════════════════════════════════
-let timerInterval = null;
-let secondsElapsed = 0;
-
 function startTimer() {
     stopTimer();
     secondsElapsed = 0;
     updateTimerDisplay();
-    timerInterval = setInterval(() => {
-        secondsElapsed++;
-        updateTimerDisplay();
-    }, 1000);
+    timerInterval = setInterval(() => { secondsElapsed++; updateTimerDisplay(); }, 1000);
 }
-
 function stopTimer() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+function updateTimerDisplay() {
+    const el = document.getElementById('timer');
+    if (!el) return;
+    const mins = Math.floor(secondsElapsed / 60);
+    const secs = secondsElapsed % 60;
+    el.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 function startExamTimer() {
@@ -1051,35 +796,21 @@ function startExamTimer() {
         if (session.timeLeft <= 0) {
             stopExamTimer();
             showToast('⏱ Tiempo agotado — corrigiendo...');
-            setTimeout(() => finishExam(), 1500);
+            setTimeout(finishExam, 1500);
         }
     }, 1000);
 }
-
 function stopExamTimer() {
-    if (examTimerInterval) {
-        clearInterval(examTimerInterval);
-        examTimerInterval = null;
-    }
+    if (examTimerInterval) { clearInterval(examTimerInterval); examTimerInterval = null; }
 }
-
 function updateExamTimerDisplay() {
     const el = document.getElementById('timer');
     if (!el) return;
-    const t = Math.max(0, session.timeLeft || 0);
+    const t    = Math.max(0, session.timeLeft || 0);
     const mins = Math.floor(t / 60);
     const secs = t % 60;
     el.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    // Rojo en el último minuto
     el.style.color = t <= 60 ? 'var(--wrong)' : 'var(--accent)';
-}
-
-function updateTimerDisplay() {
-    const mins = Math.floor(secondsElapsed / 60);
-    const secs = secondsElapsed % 60;
-    const display = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    const el = document.getElementById('timer');
-    if (el) el.textContent = display;
 }
 
 // ═══════════════════════════════════════════════
@@ -1088,48 +819,42 @@ function updateTimerDisplay() {
 function showResults() {
     stopTimer();
     const total = session.correct + session.wrong;
-    const pct = total > 0 ? Math.round(session.correct / total * 100) : 0;
-
-    const mins = Math.floor(secondsElapsed /60);
-    const secs = secondsElapsed % 60;
-    const tiempoFormateado = `${mins}:${secs.toString().padStart(2,'0')}`;
+    const pct   = total > 0 ? Math.round(session.correct / total * 100) : 0;
+    const mins  = Math.floor(secondsElapsed / 60);
+    const secs  = secondsElapsed % 60;
     const media = total > 0 ? (secondsElapsed / total).toFixed(1) : 0;
 
     let emoji = '😐', title = 'Sesión completada';
-    if (pct >= 90)      { emoji = '🏆'; title = '¡Sobresaliente!'; }
+    if      (pct >= 90) { emoji = '🏆'; title = '¡Sobresaliente!'; }
     else if (pct >= 70) { emoji = '🎯'; title = '¡Muy bien!'; }
     else if (pct >= 50) { emoji = '📚'; title = 'Sigue practicando'; }
     else                { emoji = '💪'; title = 'Hay que repasar'; }
 
-    document.getElementById('res-emoji').textContent = emoji;
-    document.getElementById('res-title').textContent = title;
-    document.getElementById('res-sub').textContent = `Has respondido ${total} preguntas en esta sesión`;
-    document.getElementById('res-pct').textContent = pct + '%';
+    document.getElementById('res-emoji').textContent   = emoji;
+    document.getElementById('res-title').textContent   = title;
+    document.getElementById('res-sub').textContent     = `Has respondido ${total} preguntas`;
+    document.getElementById('res-pct').textContent     = `${pct}%`;
     document.getElementById('res-correct').textContent = session.correct;
-    document.getElementById('res-wrong').textContent = session.wrong;
-    document.getElementById('res-time').textContent = tiempoFormateado;
-    document.getElementById('res-avg').textContent = `${media}s`;
+    document.getElementById('res-wrong').textContent   = session.wrong;
+    document.getElementById('res-time').textContent    = `${mins}:${secs.toString().padStart(2, '0')}`;
+    document.getElementById('res-avg').textContent     = `${media}s`;
 
     const reviewBtn = document.getElementById('review-btn');
-    if (reviewBtn) {
-        reviewBtn.style.display =
-            session.wrongAnswers?.length > 0 ? 'block' : 'none';
-    }
-    
+    if (reviewBtn) reviewBtn.style.display = session.wrongAnswers?.length > 0 ? 'block' : 'none';
+
     showScreen('results');
 }
 
 // ═══════════════════════════════════════════════
-//  ERROR REVIEW
+//  REVISIÓN DE FALLOS
 // ═══════════════════════════════════════════════
 function renderReview() {
-    const list     = document.getElementById('review-list');
-    const countEl  = document.getElementById('review-count');
-    const letters  = ['A', 'B', 'C', 'D'];
-    const fallos   = session.wrongAnswers || [];
+    const list    = document.getElementById('review-list');
+    const countEl = document.getElementById('review-count');
+    const letters = ['A', 'B', 'C', 'D'];
+    const fallos  = session.wrongAnswers || [];
 
-    if (countEl) countEl.textContent =
-        fallos.length > 0 ? `${fallos.length} fallos` : '';
+    if (countEl) countEl.textContent = fallos.length > 0 ? `${fallos.length} fallos` : '';
 
     if (fallos.length === 0) {
         list.innerHTML = `
@@ -1142,9 +867,12 @@ function renderReview() {
     }
 
     list.innerHTML = fallos.map(({ question: q, chosen, correct }, i) => `
-        <div class="review-card">
-            <div class="review-num">Fallo ${i + 1} de ${fallos.length}</div>
-            <p class="review-question">${escapeHtml(q.pregunta)}</p>
+    <div class="review-card">
+        <div class="review-card-meta">
+            <span class="review-code">${escapeHtml(getQuestionCode(q))}</span>
+            <span class="review-num">Fallo ${i + 1} de ${fallos.length}</span>
+        </div>
+        <p class="review-question">${escapeHtml(q.pregunta)}</p>
             <div class="review-choice review-wrong">
                 <span class="option-letter">${letters[chosen]}</span>
                 <span class="review-choice-text">${escapeHtml(q.opciones[chosen])}</span>
@@ -1153,12 +881,12 @@ function renderReview() {
                 <span class="option-letter">${letters[correct]}</span>
                 <span class="review-choice-text">${escapeHtml(q.opciones[correct])}</span>
             </div>
-        </div>
-    `).join('');
+        </div>`
+    ).join('');
 }
 
 // ═══════════════════════════════════════════════
-//  HISTORY
+//  HISTORIAL
 // ═══════════════════════════════════════════════
 async function renderHistory() {
     const list = document.getElementById('hist-list');
@@ -1166,48 +894,50 @@ async function renderHistory() {
         db.preguntas.orderBy('id').toArray(),
         db.stats.toArray()
     ]);
-    const statsMap = new Map(allStats.map(s => [s.id, s]));
+    const statsMap   = new Map(allStats.map(s => [s.id, s]));
     const answeredQs = allQuestions.filter(q => statsMap.has(q.id));
 
     if (answeredQs.length === 0) {
-        list.innerHTML =
-            '<div class="empty-state">' +
-            '<div class="empty-icon">📊</div>' +
-            '<div class="empty-title">Sin historial</div>' +
-            '<div class="empty-sub">Las preguntas respondidas aparecerán aquí</div>' +
-            '</div>';
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">📊</div>
+                <div class="empty-title">Sin historial</div>
+                <div class="empty-sub">Las preguntas respondidas aparecerán aquí</div>
+            </div>`;
         return;
     }
 
     list.innerHTML = answeredQs.map(q => {
-        const s = statsMap.get(q.id);
+        const s    = statsMap.get(q.id);
         const code = getQuestionCode(q);
-        return `<div class="hist-item">
-        <span class="hist-num">${code}</span> 
-        <span class="hist-q">${escapeHtml(q.pregunta)}</span>
-        <div class="hist-badges">
-            <span class="badge c">✓ ${s.correct || 0}</span>
-            <span class="badge w">✗ ${s.wrong || 0}</span>
-        </div>
-    </div>`;
+        return `
+            <div class="hist-item">
+                <span class="hist-num">${code}</span>
+                <span class="hist-q">${escapeHtml(q.pregunta)}</span>
+                <div class="hist-badges">
+                    <span class="badge c">✓ ${s.correct || 0}</span>
+                    <span class="badge w">✗ ${s.wrong || 0}</span>
+                </div>
+            </div>`;
     }).join('');
 }
 
 function escapeHtml(str) {
     return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+        .replace(/&/g,  '&amp;')
+        .replace(/</g,  '&lt;')
+        .replace(/>/g,  '&gt;')
+        .replace(/"/g,  '&quot;')
+        .replace(/'/g,  '&#39;');
 }
 
 async function clearHistory() {
-    showModal("¿Quieres borrar todo el historial de respuestas? (Las preguntas se conservan)", {
-        confirmText: 'Borrar el historial',
-        cancelText: 'Cancelar',
-        onConfirm: async () => {
+    showModal('¿Borrar todo el historial? (Las preguntas se conservan)', {
+        confirmText: 'Borrar',
+        cancelText:  'Cancelar',
+        onConfirm:   async () => {
             await db.stats.clear();
+            homeDirty = true;
             await renderHistory();
             await refreshHome();
         }
@@ -1215,7 +945,7 @@ async function clearHistory() {
 }
 
 // ═══════════════════════════════════════════════
-//  IMPORT
+//  IMPORTAR PREGUNTAS
 // ═══════════════════════════════════════════════
 function openImport() {
     document.getElementById('import-overlay').classList.add('open');
@@ -1231,44 +961,36 @@ function closeImport() {
 async function handleFileImport(e) {
     const file = e.target.files[0];
     if (!file) return;
-    try {
-        const text = await file.text();
-        const data = JSON.parse(text);
 
+    try {
+        const data = JSON.parse(await file.text());
         if (!Array.isArray(data) || data.length === 0) throw new Error('El archivo está vacío');
 
         const sample = data[0];
-        // Validamos el nuevo formato: pregunta, opciones, temario y numero_temario
-        if (!sample.pregunta || !Array.isArray(sample.opciones) || !sample.temario || sample.numero_temario === undefined) {
-            throw new Error('Formato JSON incorrecto (faltan campos de temario)');
+        if (!sample.pregunta || !Array.isArray(sample.opciones) ||
+            !sample.temario  || sample.numero_temario === undefined) {
+            throw new Error('Formato incorrecto (faltan campos requeridos)');
         }
 
-        // Limpieza y preparación de datos antes de insertar
-        const cleanData = data.map(q => {
-            // Creamos un objeto nuevo para asegurarnos de que NO tenga un ID previo
-            // y que IndexedDB genere uno nuevo desde 1
-            return {
-                temario: q.temario,
-                numero_temario: q.numero_temario,
-                pregunta: q.pregunta,
-                opciones: q.opciones,
-                correcta: q.correcta !== undefined ? q.correcta : null
-            };
-        });
+        const cleanData = data.map(q => ({
+            temario:        q.temario,
+            numero_temario: q.numero_temario,
+            pregunta:       q.pregunta,
+            opciones:       q.opciones,
+            correcta:       q.correcta !== undefined ? q.correcta : null
+        }));
 
-        // 1. Borramos la base de datos actual para que el autoincremento empiece de 1
         await db.preguntas.clear();
         await db.stats.clear();
-
-        // 2. Insertamos el bloque de preguntas. 
-        // IndexedDB asignará los IDs internos automáticamente.
         await db.preguntas.bulkAdd(cleanData);
 
+        homeDirty = true;
         await refreshHome();
-        showStatus(`✓ ${cleanData.length} preguntas de temario importadas`, true);
+        showStatus(`✓ ${cleanData.length} preguntas importadas`, true);
         setTimeout(closeImport, 1800);
+
     } catch (err) {
-        showStatus('✗ Error: ' + err.message, false);
+        showStatus(`✗ Error: ${err.message}`, false);
     } finally {
         e.target.value = '';
     }
@@ -1277,35 +999,43 @@ async function handleFileImport(e) {
 function showStatus(msg, ok) {
     const el = document.getElementById('import-status');
     el.textContent = msg;
-    el.className = 'import-status ' + (ok ? 'ok' : 'err');
+    el.className   = `import-status ${ok ? 'ok' : 'err'}`;
 }
 
 // ═══════════════════════════════════════════════
-//  NAVIGATION
+//  NAVEGACIÓN
 // ═══════════════════════════════════════════════
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    document.getElementById(id)?.classList.add('active');
+
     if (id === 'history') renderHistory();
-    if (id === 'home') refreshHome();
-    if (id !== 'study') {
-        stopTimer();
-        stopExamTimer();// si salimos del estudio, paramos el timer
+    if (id === 'home' && homeDirty) { refreshHome(); homeDirty = false; }
+    if (id !== 'study') { stopTimer(); stopExamTimer(); }
+
+    // Limpiar FAB del admin al salir
+    if (id !== 'admin-list') {
+        const fab = document.getElementById('scroll-top-btn');
+        if (fab?._scrollHandler) {
+            window.removeEventListener('scroll', fab._scrollHandler);
+            fab.style.display = 'none';
+        }
     }
 }
 
-/**
- * Gestiona el registro del SW y la detección de actualizaciones
- */
+// ═══════════════════════════════════════════════
+//  SERVICE WORKER
+// ═══════════════════════════════════════════════
 function initServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
-        
-        window.addEventListener('load', async () => {
-                try {
-                        const reg = await navigator.serviceWorker.register('./sw.js', {
-                updateViaCache: 'none' // ← siempre busca sw.js en el servidor
+
+    window.addEventListener('load', async () => {
+        try {
+            const reg = await navigator.serviceWorker.register('./sw.js', {
+                updateViaCache: 'none'
             });
-                        // Se dispara cuando el nuevo SW toma el control → recarga
+
+            // Recarga automática al activarse un SW nuevo
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 const enEstudio = document.querySelector('#study.active');
                 if (enEstudio) {
@@ -1315,65 +1045,44 @@ function initServiceWorker() {
                 }
             });
 
-            // Fuerza chequeo al volver a primer plano (clave en iOS)
+            // Chequear actualizaciones al volver a primer plano (iOS)
             document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
-                    reg.update();
-                }
+                if (document.visibilityState === 'visible') reg.update();
             });
 
         } catch (err) {
-            console.error('SW error:', err);
+            console.error('SW: error al registrar —', err);
         }
     });
 }
 
-/**
- * Muestra el aviso al usuario
- */
-function lanzarAvisoActualizacion() {
-    // Usamos un pequeño delay para no interrumpir si la app acaba de abrirse
-    setTimeout(() => {
-        const msg = "🚀 ¡Hay una nueva versión disponible con cambios o nuevas preguntas! \n\n ¿Quieres actualizar ahora?";
-        showModal(msg, {
-            confirmText: 'Sí',
-            cancelText: 'No',
-            onConfirm: () => window.location.reload()
-        });
-    }, 1000);
-}
-
-// ── MODAL (sustituye confirm()) ──────────────────────────────
+// ═══════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════
 function showModal(msg, { onConfirm, onCancel, confirmText = 'Aceptar', cancelText = 'Cancelar' } = {}) {
-    const overlay = document.getElementById('modal-overlay');
-    const msgEl = document.getElementById('modal-msg');
+    const overlay    = document.getElementById('modal-overlay');
+    const msgEl      = document.getElementById('modal-msg');
     const confirmBtn = document.getElementById('modal-confirm');
-    const cancelBtn = document.getElementById('modal-cancel');
+    const cancelBtn  = document.getElementById('modal-cancel');
 
-    msgEl.textContent = msg;
+    msgEl.textContent      = msg;
     confirmBtn.textContent = confirmText;
-    cancelBtn.textContent = cancelText;
+    cancelBtn.textContent  = cancelText;
+    overlay.style.display  = 'flex';
 
-    overlay.style.display = 'flex';
-
-    // Limpiar listeners anteriores (clonar para evitar acumulación)
+    // Clonar para limpiar listeners anteriores
     const newConfirm = confirmBtn.cloneNode(true);
-    const newCancel = cancelBtn.cloneNode(true);
+    const newCancel  = cancelBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
     cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
 
-    newConfirm.addEventListener('click', () => {
-        overlay.style.display = 'none';
-        onConfirm?.();
-    });
-    newCancel.addEventListener('click', () => {
-        overlay.style.display = 'none';
-        onCancel?.();
-    });
+    newConfirm.addEventListener('click', () => { overlay.style.display = 'none'; onConfirm?.(); });
+    newCancel.addEventListener('click',  () => { overlay.style.display = 'none'; onCancel?.(); });
 }
 
-// ── TOAST (sustituye alert() cuando no se necesita respuesta) ──
-let toastTimer = null;
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
 function showToast(msg, duration = 2500) {
     const toast = document.getElementById('toast');
     toast.textContent = msg;

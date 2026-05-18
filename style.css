@@ -44,9 +44,8 @@ html {
 
 body {
     height: 100%;
-    height: -webkit-fill-available;  /* iOS: altura real del viewport */
-    overflow: hidden;
-    touch-action: pan-x pan-y;
+    height: -webkit-fill-available;  /* iOS: altura real del viewport
+    touch-action: pan-x pan-y;*/
 }
 
 input, textarea, select {
@@ -68,8 +67,7 @@ input, textarea, select {
     display: none;
     height: 100%;
     flex-direction: column;
-    min-height: 0;
-    overflow-y: auto;
+    overflow-y: scroll;
     overflow-x: hidden
 }
 .screen.active { display: flex; }

@@ -89,8 +89,8 @@ input, textarea, select {
     animation: none !important;  /* Evita que el transform rompa el contexto */
 
     /* Control de Safe Areas directo */
-    adding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);  /* safe area aquí, no en el footer */
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: 0;  /* safe area aquí, no en el footer */
 }
 
 #study {
@@ -438,6 +438,8 @@ button:focus-visible,
     border-top: 1px solid var(--border);
     flex-shrink: 0;
     background: var(--bg);
+    overflow: hidden;
+    touch-action: none;
 }
 .footer-actions {
     display: flex;

@@ -33,7 +33,7 @@
 
 html {
     height: 100%;
-    /*height: -webkit-fill-available;  /* iOS: altura real del viewport */
+    height: -webkit-fill-available;
     background: var(--bg);
     color: var(--text);
     font-family: 'Nunito', sans-serif;
@@ -44,8 +44,8 @@ html {
 
 body {
     height: 100%;
-    /*height: -webkit-fill-available;  /* iOS: altura real del viewport
-    touch-action: pan-x pan-y;*/
+    height: -webkit-fill-available;  /* iOS: altura real del viewport*/
+    touch-action: pan-x pan-y;
 }
 
 input, textarea, select {

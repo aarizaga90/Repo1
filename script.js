@@ -1068,15 +1068,21 @@ function initServiceWorker() {
             const reg = await navigator.serviceWorker.register('./sw.js', {
                 updateViaCache: 'none'
             });
+            showAppVersion();
 
-            // Recarga automática al activarse un SW nuevo
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 const enEstudio = document.querySelector('#study.active');
-                if (enEstudio) {
-                    showToast('🚀 Actualización lista. Se aplicará al volver al inicio.');
-                } else {
-                    window.location.reload();
-                }
+
+                showModal(
+                    enEstudio
+                        ? '🚀 Nueva versión disponible.\n\nSi actualizas ahora perderás la sesión en curso.'
+                        : '🚀 Nueva versión disponible.\n\n¿Actualizas ahora?',
+                    {
+                        confirmText: 'Actualizar',
+                        cancelText:  'Luego',
+                        onConfirm:   () => window.location.reload()
+                    }
+                );
             });
 
             // Chequear actualizaciones al volver a primer plano (iOS)

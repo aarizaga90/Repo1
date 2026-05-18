@@ -70,7 +70,8 @@ input, textarea, select {
     overflow-y: scroll;
     overflow-x: hidden
 }
-.screen.active { display: flex; }
+.screen.active { display: grid;
+    grid-template-rows: auto 1fr auto; }
 
 #study {
     overflow: hidden;
@@ -345,7 +346,12 @@ button:focus-visible,
 #prog-of { text-align: right; }
 .study-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
 
-.question-scroll { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 16px 20px 0; }
+.question-scroll {
+    min-height: 0;            /* necesario en grid igual que en flex */
+    overflow-y: scroll;       /* scroll es más fiable que auto en iOS */
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 20px 0;
+}
 .question-num    { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: none }
 .question-text   { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 400; line-height: 1.55; color: var(--text); margin-bottom: 24px; }
 

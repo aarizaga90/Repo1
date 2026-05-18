@@ -391,7 +391,7 @@ async function startExamSession() {
 // ── Modos estándar ─────────────────────────────
 async function startStandardSession() {
     const [allQuestions, allStats] = await Promise.all([
-        db.preguntas.orderBy('id').toArray(),
+        db.preguntas.orderBy('numero_temario').toArray(),
         db.stats.toArray()
     ]);
     const statsMap = new Map(allStats.map(s => [s.id, s]));
@@ -421,9 +421,15 @@ async function startStandardSession() {
 }
 
 function applyModeFilter(pool, statsMap) {
+    const s = parseInt(document.getElementById('range-start')?.value, 10) || 1;
+    const e = parseInt(document.getElementById('range-end')?.value, 10)   || arr.length;
+
     const getRange = (arr) => {
-        const s = parseInt(document.getElementById('range-start')?.value, 10) || 1;
-        const e = parseInt(document.getElementById('range-end')?.value, 10)   || arr.length;
+        if (selectedTemario !== 'todos') {
+            // Filtrar por numero_temario — el rango referencia el número real de pregunta
+            return arr.filter(q => q.numero_temario >= s && q.numero_temario <= e);
+        }
+        // Para 'todos': slice por posición (los numero_temario se solapan entre bloques)
         return arr.slice(Math.max(0, s - 1), Math.min(arr.length, e));
     };
 

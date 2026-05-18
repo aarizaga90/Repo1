@@ -77,15 +77,22 @@ input, textarea, select {
 }
 
 #study.active {
-    position: fixed;          /*!* anclado al viewport directamente *!*/
-    inset: 0;                 /*!* cubre toda la pantalla *!*/
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    position: fixed !important; /* Asegura el anclaje total */
+    inset: 0 !important;        /* Cubre el 100% real de la pantalla */
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
     background: var(--bg);
-    z-index: 1;               /* por encima del resto de pantallas */
+    z-index: var(--z-overlay);  /* Ponlo arriba del todo, como el import overlay */
+
+    /* Reseteamos lo que mete .screen.active y rompe iOS */
+    flex: none !important;
+    transform: none !important;  /* 👈 CRUCIAL: Elimina la animación slideUp que rompe el fixed */
+    animation: none !important;  /* Evita que el transform rompa el contexto */
+
+    /* Control de Safe Areas directo */
     padding-top: env(safe-area-inset-top, 0px);
-    /*padding-bottom: env(safe-area-inset-bottom, 0px);*/
+    padding-bottom: 0;           /* Queremos que el fondo llegue abajo del todo */
 }
 
 
@@ -368,6 +375,7 @@ button:focus-visible,
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
     padding: 16px 20px 0;
+    animation: slideUp 0.25s ease both;
 }
 .question-num    { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: none }
 .question-text   { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 400; line-height: 1.55; color: var(--text); margin-bottom: 24px; }
@@ -429,7 +437,7 @@ button:focus-visible,
 
 /* ── Footer: modo estudio ───────────────────── */
 .answer-footer {
-    padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
     background: var(--bg);

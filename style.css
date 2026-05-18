@@ -77,10 +77,18 @@ input, textarea, select {
 }
 
 #study.active {
-    display: grid;
-    grid-template-rows: auto 1fr auto;  /* header fijo | scroll | footer fijo */
+    position: fixed;          /* anclado al viewport directamente */
+    inset: 0;                 /* cubre toda la pantalla */
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
+    background: var(--bg);
+    z-index: 1;               /* por encima del resto de pantallas */
+    /* safe areas propias, independientes del #app */
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
 
 #study {
     overflow: hidden;
@@ -356,8 +364,9 @@ button:focus-visible,
 .study-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
 
 .question-scroll {
-    min-height: 0;            /* necesario en grid igual que en flex */
-    overflow-y: scroll;       /* scroll es más fiable que auto en iOS */
+    flex: 1;
+    min-height: 0;
+    overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
     padding: 16px 20px 0;
 }

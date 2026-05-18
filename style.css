@@ -313,6 +313,11 @@ button:focus-visible,
 #study { overflow: hidden; }
 
 .study-header {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    left: 0;
+    right: 0;
+    z-index: var(--z-sticky);
     padding: 14px 20px;
     display: flex;
     align-items: center;
@@ -355,14 +360,21 @@ button:focus-visible,
 .study-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
 
 .question-scroll {
-    flex: 1;
-    min-height: 0;
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 65px); /* safe-top + altura del header */
+    bottom: 0;
+    left: 0;
+    right: 0;
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
-    /*overscroll-behavior: none;*/
-    padding: 16px 20px 0;
-    animation: slideUp 0.25s ease both;
+    overscroll-behavior: none;
+    padding: 16px 20px;
 }
+
+#study.footer-visible .question-scroll {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
+}
+
 .question-num    { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: none }
 .question-text   { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 400; line-height: 1.55; color: var(--text); margin-bottom: 24px; }
 
@@ -424,11 +436,10 @@ button:focus-visible,
 /* ── Footer: modo estudio ───────────────────── */
 .answer-footer {
     position: fixed;
-    bottom: 0;
+    bottom: env(safe-area-inset-bottom, 0px);
     left: 0;
     right: 0;
     padding: 12px 20px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--border);
     flex-shrink: 0;
     background: var(--bg);

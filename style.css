@@ -43,15 +43,12 @@ html, body {
     -webkit-tap-highlight-color: transparent;
 }
 
-html {
-    height: -webkit-fill-available;
-}
-
-body {
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
+html, body {
+    height: 100%;           /* fallback para no-iOS */
     overflow: hidden;
 }
+html { height: -webkit-fill-available; }  /* iOS: sobrescribe el 100% */
+body { height: -webkit-fill-available; }  /* iOS: sobrescribe el 100% */
 
 input, textarea, select {
     font-size: 16px !important; /* evita zoom automático en iOS */

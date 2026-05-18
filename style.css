@@ -31,27 +31,26 @@
     padding: 0;
 }
 
-html, body {
+html {
     height: 100%;
+    height: -webkit-fill-available;  /* iOS: altura real del viewport */
     background: var(--bg);
     color: var(--text);
     font-family: 'Nunito', sans-serif;
-    overflow: hidden;
-    touch-action: pan-x pan-y;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
-    height: 100%;           /* fallback para no-iOS */
+body {
+    height: 100%;
+    height: -webkit-fill-available;  /* iOS: altura real del viewport */
     overflow: hidden;
+    touch-action: pan-x pan-y;
 }
-html { height: -webkit-fill-available; }  /* iOS: sobrescribe el 100% */
-body { height: -webkit-fill-available; }  /* iOS: sobrescribe el 100% */
 
 input, textarea, select {
-    font-size: 16px !important; /* evita zoom automático en iOS */
+    font-size: 16px !important;
 }
 
 /* ── App shell ──────────────────────────────── */
@@ -69,11 +68,15 @@ input, textarea, select {
     display: none;
     flex: 1;
     flex-direction: column;
-    height: 100%;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden
 }
 .screen.active { display: flex; }
+
+#study {
+    overflow: hidden;
+}
 
 /* ─────────────────────────────────────────────
    BOTONES

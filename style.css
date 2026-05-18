@@ -62,7 +62,7 @@ input, textarea, select {
     padding-bottom: var(--safe-bottom);
 }
 
-/* ── Screens ────────────────────────────────– */
+/* ── Screens ────────────────────────────────── */
 .screen {
     display: none;
     overflow-y: scroll;
@@ -975,16 +975,3 @@ button:focus-visible,
 }
 
 .screen.active { animation: slideUp 0.25s ease; }
-
-/* ─────────────────────────────────────────────
-   iOS PWA VIEWPORT FIX
-   ───────────────────────────────────────────── */
-@supports (padding: max(0px)) {
-    #app {
-        height: 100dvh;
-    }
-    
-    .question-scroll {
-        max-height: 100%;
-    }
-}

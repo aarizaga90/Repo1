@@ -130,6 +130,7 @@ async function boot() {
         await db.preguntas.bulkPut(DEFAULT_QUESTIONS);
     }
     await refreshHome();
+    await showAppVersion();
     initServiceWorker();
 }
 
@@ -993,6 +994,17 @@ async function handleFileImport(e) {
         showStatus(`✗ Error: ${err.message}`, false);
     } finally {
         e.target.value = '';
+    }
+}
+
+async function showAppVersion() {
+    try {
+        const keys  = await caches.keys();
+        const cache = keys.find(k => k.startsWith('opos-'));
+        const el    = document.getElementById('app-version');
+        if (el) el.textContent = cache ?? 'sin caché';
+    } catch {
+        // falla silenciosamente si caches no está disponible
     }
 }
 

@@ -261,6 +261,14 @@ button:focus-visible,
 .home-title      { font-family: 'Playfair Display', serif; font-size: 32px; line-height: 1.2; }
 .home-title span { color: var(--accent); }
 
+.app-version {
+    font-size: 10px;
+    color: var(--correct-dim);   /* casi invisible — solo para quien sabe dónde mirar */
+    font-family: monospace;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
 .stats-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;

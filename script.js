@@ -79,6 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 onConfirm:   () => showResults()
             });
         });
+    document.getElementById('dudosa-btn')
+        ?.addEventListener('click', toggleDudosa);
 
     // ── Results ───────────────────────────────────────
     document.getElementById('finish-btn')
@@ -211,7 +213,11 @@ async function selectModeSecure(el, mode, target) {
             html: `<div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">${temarioSelectorHTML}${rangeHTML}</div>`
         },
         wrong:  { desc: 'Repasa tus errores.',   html: `<div style="display:flex; flex-wrap:wrap; gap:15px;">${temarioSelectorHTML}</div>` },
-        unseen: { desc: 'Preguntas sin responder.', html: `<div style="display:flex; flex-wrap:wrap; gap:15px;">${temarioSelectorHTML}</div>` }
+        unseen: { desc: 'Preguntas sin responder.', html: `<div style="display:flex; flex-wrap:wrap; gap:15px;">${temarioSelectorHTML}</div>` },
+        dudosas: {
+            desc: 'Repaso de tus preguntas marcadas con 🔖 durante el estudio.',
+            html: `<p id="dudosas-panel-info" style="font-size:13px; color:var(--accent); margin:0;"></p>`
+        }
     };
 
     const config = configs[mode];
@@ -226,6 +232,12 @@ async function selectModeSecure(el, mode, target) {
         </div>`;
 
     requestAnimationFrame(() => activePanel.classList.add('active'));
+    if (mode === 'dudosas') {
+        db.preguntas.where('dudosa').equals(1).count().then(n => {
+            const el = activePanel.querySelector('#dudosas-panel-info');
+            if (el) el.textContent = n > 0 ? `${n} preguntas marcadas listas para repasar.` : 'Aún no has marcado ninguna pregunta como duda.';
+        });
+    }
 
     // Actualización dinámica al cambiar bloque
     activePanel.querySelector('#filter-temario')?.addEventListener('change', async (e) => {
@@ -272,12 +284,39 @@ async function refreshHome() {
     const actionsEl = document.getElementById('home-actions');
     emptyEl.style.display   = total === 0 ? 'block' : 'none';
     actionsEl.style.display = total === 0 ? 'none'  : 'block';
+    
+    loadDudasCount();
 }
 
 function getQuestionCode(q) {
     if (!q || !q.temario || q.numero_temario === undefined) return 'S/N';
     const letra = q.temario.toLowerCase().startsWith('e') ? 'E' : 'C';
     return `${q.numero_temario}-${letra}`;
+}
+
+// ── Dudosas ─────────────────────────────────────
+async function toggleDudosa() {
+    const q = session.currentQuestion;
+    if (!q) return;
+    const nuevoVal = q.dudosa ? 0 : 1;
+    await db.preguntas.update(q.id, { dudosa: nuevoVal });
+    q.dudosa = nuevoVal;
+    updateDudosaBtn();
+    loadDudasCount();
+}
+
+function updateDudosaBtn() {
+    const btn = document.getElementById('dudosa-btn');
+    if (!btn) return;
+    const marcada = !!(session.currentQuestion?.dudosa);
+    btn.classList.toggle('marcada', marcada);
+    btn.setAttribute('aria-label', marcada ? 'Quitar marca de duda' : 'Marcar como duda');
+}
+
+async function loadDudasCount() {
+    const count = await db.preguntas.where('dudosa').equals(1).count();
+    const el = document.getElementById('dudosas-count');
+    if (el) el.textContent = count > 0 ? `${count} preguntas` : 'Sin marcar';
 }
 
 // ═══════════════════════════════════════════════
@@ -297,8 +336,39 @@ async function startStudy() {
     answered = false;
 
     if (selectedMode === 'smart') return startSmartSession();
+    if (selectedMode === 'dudosas') return startDudosasSession();
     if (selectedMode === 'exam')  return startExamSession();
     return startStandardSession();
+}
+
+// ── Dudosas ──────────────────────────────────────
+
+async function startDudosasSession() {
+// ── Modo DUDOSAS: carga directa desde DB ────
+        const pool = await db.preguntas.where('dudosa').equals(1).toArray();
+        if (pool.length === 0) {
+            showToast('No tienes preguntas marcadas como duda 👍');
+            return;
+        }
+        pool.sort(() => Math.random() - 0.5);
+        session = {
+            mode: 'dudosas',
+            queue: pool,
+            index: 0,
+            currentQuestion: pool[0],
+            correct: 0,
+            wrong: 0,
+            wrongAnswers: [],
+            lastId: pool[0].id,
+            nextBuffer: null,
+            isExam: false,
+            timeLeft: 0,
+            answers: {}
+        };
+        startTimer();
+        showScreen('study');
+        renderCurrentQuestion();
+        return;
 }
 
 // ── Smart ──────────────────────────────────────
@@ -454,6 +524,7 @@ function renderCurrentQuestion() {
     if (!container || !q) return;
 
     answered = false;
+    updateDudosaBtn();
 
     const idx       = session.index;
     const isSmart   = session.mode === 'smart';
@@ -467,6 +538,7 @@ function renderCurrentQuestion() {
     document.getElementById('prog-current').textContent = code;                             // "181-C" en el header izquierda
     document.getElementById('prog-of').textContent      = esInfinito ? String(idx + 1) : `${idx + 1} / ${total}`; // "15 / 698" derecha
     document.getElementById('study-fill').style.width   = esInfinito ? '0%' : `${idx / total * 100}%`;
+    document.getElementById('dudosa-btn').style.display = isExam ? 'none' : 'flex'
     document.getElementById('question-scroll').scrollTop = 0;
 
     // Footers

@@ -21,6 +21,12 @@ db.version(2).stores({
     await tx.table('stats').clear();
 });
 
+// VERSION 3: campo dudosa indexado (sin limpiar datos — solo añade el índice)
+db.version(3).stores({
+    preguntas: '++id, temario, numero_temario, dudosa',
+    stats: 'id'
+});
+
 db.open()
     .catch('UpgradeError', async () => {
         console.error('DB: esquema incompatible — reiniciando...');

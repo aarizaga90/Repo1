@@ -78,13 +78,20 @@
         <div id="home-actions">
             <div class="main-modes-grid">
                 <button type="button" class="mode-btn big" data-mode="exam" data-target="top">
-                    <span class="mode-icon">⏱️</span> Examen
+                    <span class="mode-icon">⏱️</span>
+                    <span class="mode-label">Examen</span>
                 </button>
                 <button type="button" class="mode-btn big" data-mode="all" data-target="top">
-                    <span class="mode-icon">📚</span> En Orden
+                    <span class="mode-icon">📚</span>
+                    <span class="mode-label">En Orden</span>
                 </button>
                 <button type="button" class="mode-btn big" data-mode="smart" data-target="top">
-                    <span class="mode-icon">🧠</span> Inteligente
+                    <span class="mode-icon">🧠</span>
+                    <span class="mode-label">Inteligente</span>
+                </button>
+                <button type="button" class="mode-btn big" data-mode="shuffle" data-target="top">
+                    <span class="mode-icon">🔀</span>
+                    <span class="mode-label">Aleatorio</span>
                 </button>
             </div>
 
@@ -93,8 +100,10 @@
             <details class="extra-modes-details">
                 <summary>Otros tipos de sesión ▼</summary>
                 <div class="extra-modes-grid">
-                    <button type="button" class="mode-btn sm" data-mode="shuffle" data-target="bottom">
-                        <span class="mode-icon">🔀</span> Aleatorio
+                    <button type="button" class="mode-btn sm" data-mode="dudosas" data-target="bottom">
+                        <span class="mode-icon">🔖</span>
+                        <span class="mode-label">Dudas</span>
+                        <span class="mode-sub" id="dudosas-count"></span>
                     </button>
                     <button type="button" class="mode-btn sm" data-mode="wrong" data-target="bottom">
                         <span class="mode-icon">❌</span> Falladas
@@ -127,6 +136,7 @@
                     <div class="study-prog-fill" id="study-fill" style="width:0%"></div>
                 </div>
             </div>
+            <button class="dudosa-btn" id="dudosa-btn" aria-label="Marcar como duda">🤔</button>
         </header>
 
         <div class="question-scroll" id="question-scroll">

@@ -57,9 +57,9 @@ input, textarea, select {
     height: 100%;
     display: flex;
     flex-direction: column;
-    /*overflow: hidden;*/
+    overflow: hidden;
     padding-top: var(--safe-top);
-    padding-bottom: var(--safe-bottom);
+    /*padding-bottom: var(--safe-bottom);*/
 }
 
 /* ── Screens ────────────────────────────────── */
@@ -269,7 +269,7 @@ button:focus-visible,
    HOME
    ───────────────────────────────────────────── */
 #home {
-    padding: 28px 24px 24px;
+    padding: 28px 24px calc(24px + var(--safe-bottom));
     background: radial-gradient(ellipse at 80% 0%, rgba(245,166,35,0.08) 0%, transparent 60%);
 }
 
@@ -310,7 +310,7 @@ button:focus-visible,
 /* ─────────────────────────────────────────────
    STUDY
    ───────────────────────────────────────────── */
-#study { overflow: hidden; }
+/*#study { overflow: hidden; }*/
 
 .study-header {
     position: fixed;
@@ -372,7 +372,7 @@ button:focus-visible,
 }
 
 #study.footer-visible .question-scroll {
-    padding-bottom: 100px;
+    padding-bottom: calc(110px + var(--safe-bottom));
 }
 
 .question-num    { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: none }
@@ -439,9 +439,8 @@ button:focus-visible,
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 12px 20px;
+    padding: 12px 20px calc(12px + var(--safe-bottom));
     border-top: 1px solid var(--border);
-    /*flex-shrink: 0;*/
     background: var(--bg);
     z-index: var(--z-sticky);
     overflow: hidden;
@@ -534,7 +533,7 @@ button:focus-visible,
 #results {
     justify-content: center;
     align-items: center;
-    padding: 32px 24px;
+    padding: 32px 24px calc(32px + var(--safe-bottom));
     text-align: center;
 }
 .result-emoji { font-size: 64px; margin-bottom: 16px; }
@@ -560,7 +559,7 @@ button:focus-visible,
 /* ─────────────────────────────────────────────
    HISTORY
    ───────────────────────────────────────────── */
-#history { padding-bottom: 24px; }
+#history { padding-bottom: calc(24px + var(--safe-bottom));}
 
 .hist-header {
     display: flex;
@@ -609,7 +608,7 @@ button:focus-visible,
 /* ─────────────────────────────────────────────
    REVIEW (revisión de fallos)
    ───────────────────────────────────────────── */
-.review-list    { padding: 0 16px 32px; }
+.review-list    { padding: 0 16px calc(32px + var(--safe-bottom)); }
 .screen-counter { font-size: 13px; color: var(--muted); font-weight: 700; }
 
 .review-card {
@@ -663,6 +662,7 @@ button:focus-visible,
 /* ─────────────────────────────────────────────
    ADMIN — lista de preguntas
    ───────────────────────────────────────────── */
+#admin-list { padding-bottom: var(--safe-bottom); }
 .search-bar {
     position: sticky;
     top: 0;
@@ -783,7 +783,7 @@ button:focus-visible,
     flex-direction: column;
     gap: 15px;
     padding: 20px;
-    padding-bottom: 100px; /* espacio para el teclado */
+    padding-bottom: calc(100px + var(--safe-bottom));
 }
 .edit-label {
     color: var(--muted);

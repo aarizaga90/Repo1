@@ -58,32 +58,89 @@ input, textarea, select {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding-top: var(--safe-top);
+    /*padding-top: var(--safe-top);*/
     /*padding-bottom: var(--safe-bottom);*/
 }
 
 /* ── Screens ────────────────────────────────── */
 .screen {
     display: none;
-    overflow-y: scroll;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    /*overflow-y: scroll;*/
+    /*overflow-x: hidden;*/
+    /*-webkit-overflow-scrolling: touch;*/
 }
 .screen.active {
     display: flex;
     flex: 1;
     min-height: 0;
     flex-direction: column;
+    overflow: hidden;  /* CLAVE: el screen ya no scrollea */
+}
+#home.active {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: calc(var(--safe-top) + 20px) 20px calc(var(--safe-bottom) + 20px);
+}
+#results.active {
+    overflow-y: auto;
+    align-items: center;
+    padding: calc(var(--safe-top) + 40px) 20px calc(var(--safe-bottom) + 40px);
+}
+
+/* Cualquier header dentro de una screen */
+.study-header,
+.hist-header,
+.edit-header {
+    flex: 0 0 auto;
+    padding-top: calc(var(--safe-top) + 14px);
+    background: var(--bg);
+}
+.edit-header {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border);
+    z-index: var(--z-sticky);
+}
+
+.edit-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;          /* permite que el contenedor se encoja */
+}
+
+.edit-header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;   /* el título no rompe línea */
+    min-width: 0;
+}
+.question-scroll,
+.hist-list,
+.review-list,
+#questions-list-container,
+.edit-form {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px;
+    padding-bottom: var(--safe-bottom)
 }
 
     #study.active {
-        overflow: visible;
         animation: none;
     }
-
-#study {
-    overflow: visible;
-}
 
 /* ─────────────────────────────────────────────
    BOTONES
@@ -167,20 +224,9 @@ button:focus-visible,
 
 /* Botón siguiente (footer estudio) */
 .next-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    width: 100%;
-    padding: 12px;
     border: none;
-    border-radius: var(--radius);
     background: var(--accent);
     color: #0f1117;
-    font-family: 'Nunito', sans-serif;
-    font-size: 16px;
-    font-weight: 800;
-    cursor: pointer;
     transition: transform 0.15s ease;
 }
 .next-btn:active { transform: scale(0.97); }
@@ -333,10 +379,6 @@ button:focus-visible,
 /*#study { overflow: hidden; }*/
 
 .study-header {
-    position: fixed;
-    top: env(safe-area-inset-top, 0px);
-    left: 0;
-    right: 0;
     z-index: var(--z-sticky);
     padding: 14px 20px;
     display: flex;
@@ -344,7 +386,6 @@ button:focus-visible,
     gap: 12px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    background: var(--bg);
 }
 .back-btn {
     width: 36px;
@@ -386,7 +427,6 @@ button:focus-visible,
 .study-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
 
 .question-scroll {
-    position: fixed;
     top: calc(env(safe-area-inset-top, 0px) + 65px);
     bottom: 0;
     left: 0;
@@ -395,10 +435,6 @@ button:focus-visible,
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: none;
     padding: 16px 20px;
-}
-
-#study.footer-visible .question-scroll {
-    padding-bottom: calc(110px + var(--safe-bottom));
 }
 
 .question-num    { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: none }
@@ -461,10 +497,7 @@ button:focus-visible,
 
 /* ── Footer: modo estudio ───────────────────── */
 .answer-footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    flex: 0 0 auto;
     padding: 12px 20px calc(12px + var(--safe-bottom));
     border-top: 1px solid var(--border);
     background: var(--bg);
@@ -478,12 +511,39 @@ button:focus-visible,
     gap: 10px;
     width: 100%;
     flex-wrap: nowrap;
+    align-items: stretch;
 }
 
 .footer-actions > * {
     flex: 1 1 0;
-    width: auto;            /* ← anula el width:100% del reset de button */
+    width: auto;
     min-width: 0;
+    margin: 0;
+    
+    /* Sizing uniforme */
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: 12px 16px;
+
+    /* Contenido centrado */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    /* Tipografía uniforme */
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+
+    /* Forma uniforme */
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+
+.footer-actions > .btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
 }
 
 /* ── Footer: modo examen ────────────────────── */
@@ -562,6 +622,7 @@ button:focus-visible,
     padding: 32px 24px calc(32px + var(--safe-bottom));
     text-align: center;
 }
+
 .result-emoji { font-size: 64px; margin-bottom: 16px; }
 .result-title { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--text); margin-bottom: 8px; }
 .result-sub   { font-size: 15px; color: var(--muted); margin-bottom: 32px; line-height: 1.5; }
@@ -585,20 +646,16 @@ button:focus-visible,
 /* ─────────────────────────────────────────────
    HISTORY
    ───────────────────────────────────────────── */
-#history { padding-bottom: calc(24px + var(--safe-bottom));}
-
 .hist-header {
     display: flex;
     align-items: center;
     gap: 12px;
-    position: sticky;
-    top: 0;
     background: var(--bg);
     z-index: var(--z-sticky);
     padding: 20px 20px 12px;
 }
 .hist-title { font-family: 'Playfair Display', serif; font-size: 22px; flex: 1; }
-.hist-list  { display: flex; flex-direction: column; gap: 10px; padding: 0 20px; }
+.hist-list  { display: flex; flex-direction: column; gap: 10px; padding: 0 20px; padding-bottom: calc(24px + var(--safe-bottom)); }
 
 .hist-item {
     background: var(--surface);
@@ -688,10 +745,8 @@ button:focus-visible,
 /* ─────────────────────────────────────────────
    ADMIN — lista de preguntas
    ───────────────────────────────────────────── */
-#admin-list { padding-bottom: var(--safe-bottom); }
 .search-bar {
-    position: sticky;
-    top: 0;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -776,19 +831,7 @@ button:focus-visible,
 /* ─────────────────────────────────────────────
    ADMIN — editor de pregunta
    ───────────────────────────────────────────── */
-.edit-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    z-index: var(--z-sticky);
-}
-.edit-header-left  { display: flex; align-items: center; gap: 12px; flex: 1; }
-.edit-header-title { font-family: 'Playfair Display', serif; font-size: 18px; white-space: nowrap; color: var(--text); }
+ 
 
 .btn-save {
     background: var(--accent);
@@ -808,8 +851,7 @@ button:focus-visible,
     display: flex;
     flex-direction: column;
     gap: 15px;
-    padding: 20px;
-    padding-bottom: calc(100px + var(--safe-bottom));
+    padding-bottom: calc(24px + var(--safe-bottom));
 }
 .edit-label {
     color: var(--muted);

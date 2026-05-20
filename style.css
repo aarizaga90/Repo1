@@ -34,6 +34,8 @@
 html {
     height: 100%;
     height: -webkit-fill-available;
+    height: 100dvh;
+    overflow: hidden;
     background: var(--bg);
     color: var(--text);
     font-family: 'Nunito', sans-serif;
@@ -44,7 +46,9 @@ html {
 
 body {
     height: 100%;
-    height: -webkit-fill-available;  /* iOS: altura real del viewport*/
+    height: -webkit-fill-available;
+    height: 100dvh;
+    overflow: hidden;
     touch-action: pan-x pan-y;
 }
 
@@ -103,6 +107,7 @@ input, textarea, select {
     align-items: center;
     gap: 12px;
     padding: 15px 20px;
+    padding-top: calc(var(--safe-top) + 14px);
     border-bottom: 1px solid var(--border);
     z-index: var(--z-sticky);
 }
@@ -381,6 +386,7 @@ button:focus-visible,
 .study-header {
     z-index: var(--z-sticky);
     padding: 14px 20px;
+    padding-top: calc(var(--safe-top) + 14px);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -427,14 +433,11 @@ button:focus-visible,
 .study-prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
 
 .question-scroll {
-    top: calc(env(safe-area-inset-top, 0px) + 65px);
-    bottom: 0;
-    left: 0;
-    right: 0;
     overflow-y: scroll;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: none;
     padding: 16px 20px;
+    padding-bottom: calc(16px + var(--safe-bottom));
 }
 
 .question-num    { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; display: none }
@@ -653,6 +656,7 @@ button:focus-visible,
     background: var(--bg);
     z-index: var(--z-sticky);
     padding: 20px 20px 12px;
+    padding-top: calc(var(--safe-top) + 14px);
 }
 .hist-title { font-family: 'Playfair Display', serif; font-size: 22px; flex: 1; }
 .hist-list  { display: flex; flex-direction: column; gap: 10px; padding: 0 20px; padding-bottom: calc(24px + var(--safe-bottom)); }

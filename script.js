@@ -848,15 +848,20 @@ async function getSmartNextQuestion() {
 
         if (!s) {
             // Nunca vista: peso base
-            peso = 3;
+            peso = 5;
         } else {
             // Usar el peso acumulado de recordAnswer (refleja historial completo)
             peso = s.peso || 1;
 
             // Bonus por tiempo sin ver (s.last es timestamp)
+            const racha = s.racha || 0;
+            if (racha >= 5) peso *= 0.2;
+            else if (racha >= 3) peso *= 0.5;
+
             if (s.last) {
                 const diasDesde = (Date.now() - s.last) / (1000 * 60 * 60 * 24);
-                peso += Math.min(diasDesde * 0.5, 3); // máximo +3 por antigüedad
+                const BonusAntiguedad = 1 + Math.min(diasDesde/10,1);
+                peso *= BonusAntiguedad; // máximo +3 por antigüedad
             }
         }
 

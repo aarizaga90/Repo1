@@ -158,39 +158,55 @@
     </section>
 
     <!-- ── RESULTS ────────────────────────────────────────────── -->
-    <section id="results" class="screen" aria-labelledby="res-title">
-        <div class="result-emoji" id="res-emoji" aria-hidden="true">🎉</div>
-        <h2 class="result-title" id="res-title">¡Sesión completada!</h2>
-        <div class="result-sub" id="res-sub"></div>
-        <div class="result-score">
-            <div class="score-big" id="res-pct">0%</div>
-            <div class="score-label">Tasa de acierto</div>
-            <div class="score-detail">
-                <div class="score-item c">
-                    <div class="val" id="res-correct">0</div>
-                    <div class="lbl">Correctas</div>
-                </div>
-                <div class="score-item w">
-                    <div class="val" id="res-wrong">0</div>
-                    <div class="lbl">Incorrectas</div>
-                </div>
-            </div>
+<section id="results" class="screen" aria-labelledby="res-title">
+    <div class="result-emoji" id="res-emoji" aria-hidden="true">🎉</div>
+    <h2 class="result-title" id="res-title">¡Sesión completada!</h2>
+    <div class="result-sub" id="res-sub"></div>
+
+    <div class="result-score">
+        <div class="score-big" id="res-pct">0%</div>
+        <div class="score-label" id="res-score-label">Tasa de acierto</div>
+
+        <!-- Bloque solo visible en modo examen -->
+        <div id="res-exam-detail" style="display:none">
             <div class="score-detail">
                 <div class="score-item">
-                    <span id="res-time" class="val">00:00</span>
-                    <span class="lbl">Tiempo</span>
+                    <div class="val" id="res-n1">0</div>
+                    <div class="lbl">Teórico (65%)</div>
                 </div>
                 <div class="score-item">
-                    <span id="res-avg" class="val">0s</span>
-                    <span class="lbl">Media</span>
+                    <div class="val" id="res-n2">0</div>
+                    <div class="lbl">Práctico (35%)</div>
                 </div>
             </div>
         </div>
-        <!-- Acción primaria primero, secundarias después -->
-        <button class="btn btn-primary" id="finish-btn">Volver al inicio</button>
-        <button class="btn btn-secondary" id="review-btn" style="display:none">🔍 Revisar fallos</button>
-        <button class="btn btn-secondary" id="retry-btn">Repetir sesión</button>
-    </section>
+
+        <div class="score-detail">
+            <div class="score-item c">
+                <div class="val" id="res-correct">0</div>
+                <div class="lbl">Correctas</div>
+            </div>
+            <div class="score-item w">
+                <div class="val" id="res-wrong">0</div>
+                <div class="lbl">Incorrectas</div>
+            </div>
+        </div>
+        <div class="score-detail">
+            <div class="score-item">
+                <span id="res-time" class="val">00:00</span>
+                <span class="lbl">Tiempo</span>
+            </div>
+            <div class="score-item">
+                <span id="res-avg" class="val">0s</span>
+                <span class="lbl">Media</span>
+            </div>
+        </div>
+    </div>
+
+    <button class="btn btn-primary" id="finish-btn">Volver al inicio</button>
+    <button class="btn btn-secondary" id="review-btn" style="display:none">🔍 Revisar fallos</button>
+    <button class="btn btn-secondary" id="retry-btn">Repetir sesión</button>
+</section>
 
     <!-- ── HISTORY ────────────────────────────────────────────── -->
     <section id="history" class="screen" aria-labelledby="hist-title">

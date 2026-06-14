@@ -403,8 +403,8 @@ async function startSmartSession() {
 // ── Examen ─────────────────────────────────────
 async function startExamSession() {
     const examMinutes  = parseInt(document.getElementById('exam-time')?.value) || 75;
-    const TARGET_TOTAL = 100;
-    const MIN_TRAMO    = 10;
+    const TARGET_TEORICO = 80;
+    const TARGET_PRACTICO    = 20;
 
     const [allComun, allEspec] = await Promise.all([
         db.preguntas.where('temario').equals('común').toArray(),
@@ -420,35 +420,42 @@ async function startExamSession() {
         return;
     }
 
-    // Distribución proporcional
-    const grandTotal = comunValid.length + especValid.length;
-    const numComun   = Math.round(TARGET_TOTAL * comunValid.length / grandTotal);
-    const numEspec   = TARGET_TOTAL - numComun;
-
     // Bloque 450-500 (preguntas prácticas)
     const tramo450 = especValid
         .filter(q => q.numero_temario >= 450 && q.numero_temario <= 500)
         .sort(() => Math.random() - 0.5);
 
-    const selectedTramo = tramo450
-        .slice(0, Math.min(MIN_TRAMO, tramo450.length))
-        .sort((a, b) => a.numero_temario - b.numero_temario); // agrupa enunciados compartidos
+   const selectedPractico = tramo450
+        .slice(0, Math.min(TARGET_PRACTICO, tramo450.length))
+        .sort((a, b) => a.numero_temario - b.numero_temario);
 
-    const restoEspec = especValid
-        .filter(q => q.numero_temario < 450)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, numEspec - selectedTramo.length);
+    const especTeorico = especValid.filter(q => q.numero_temario < 450);
+    const totalTeorico = comunValid.length + especTeorico.length;
+
+    if (totalTeorico + tramo450.length === 0) {
+        showToast('No hay preguntas disponibles');
+        return;
+    }
+
+    const numComun = totalTeorico > 0
+        ? Math.round(TARGET_TEORICO * comunValid.length / totalTeorico)
+        : 0;
+    const numEspec = TARGET_TEORICO - numComun;
 
     const selectedComun = comunValid
         .sort(() => Math.random() - 0.5)
         .slice(0, numComun);
 
-    const poolBase  = [...selectedComun, ...restoEspec].sort(() => Math.random() - 0.5);
-    const examPool  = [...poolBase, ...selectedTramo];
+    const selectedEspec = especTeorico
+        .sort(() => Math.random() - 0.5)
+        .slice(0, numEspec);
+
+    const poolBase  = [...selectedComun, ...selectedEspec].sort(() => Math.random() - 0.5);
+    const examPool  = [...poolBase, ...selectedPractico];
 
     if (examPool.length === 0) { showToast('No hay preguntas disponibles'); return; }
 
-    log(`Examen: ${selectedComun.length}C + ${restoEspec.length}E + ${selectedTramo.length} bloque = ${examPool.length}`);
+    log(`Examen: ${selectedComun.length}C + ${selectedEspec.length}E + ${selectedPractico.length} prac = ${examPool.length}`);
 
     Object.assign(session, {
         mode: 'exam', queue: examPool, isExam: true,
@@ -645,43 +652,69 @@ function confirmFinishExam() {
 async function finishExam() {
     stopExamTimer();
 
-    let aciertos = 0, fallos = 0, blancas = 0;
+    let aciertosT = 0, fallosT = 0, blancasT = 0;
+    let aciertosP = 0, fallosP = 0, blancasP = 0;
 
     for (const q of session.queue) {
         const respuesta = session.answers[q.id];
-        if (respuesta === undefined) {
-            blancas++;
-        } else if (respuesta === q.correcta) {
-            aciertos++;
-            await recordAnswer(q.id, true);
+        const esPractica = q.numero_temario >= 450;
+        const esCorrecta = respuesta !== undefined && respuesta === q.correcta;
+        const esBlanca   = respuesta === undefined;
+
+        if (esPractica) {
+            if (esBlanca)       blancasP++;
+            else if (esCorrecta) aciertosP++;
+            else                 fallosP++;
         } else {
-            fallos++;
-            await recordAnswer(q.id, false);
-            session.wrongAnswers.push({ question: q, chosen: respuesta, correct: q.correcta });
+            if (esBlanca)       blancasT++;
+            else if (esCorrecta) aciertosT++;
+            else                 fallosT++;
+        }
+
+        if (!esBlanca) {
+            await recordAnswer(q.id, esCorrecta);
+            if (!esCorrecta) session.wrongAnswers.push({ question: q, chosen: respuesta, correct: q.correcta });
         }
     }
 
+    const totalT = aciertosT + fallosT + blancasT;
+    const totalP = aciertosP + fallosP + blancasP;
+
+    // Notas sobre 100 (aciertos / total * 100, sin penalización)
+    const N1 = totalT > 0 ? (aciertosT / totalT) * 100 : 0;
+    const N2 = totalP > 0 ? (aciertosP / totalP) * 100 : 0;
+    const MP = (N1 * 65 + N2 * 35) / 100;
+
+
     showExamResults({
-        nota:     Math.max(0, aciertos - fallos / 3).toFixed(2),
-        aciertos, fallos, blancas,
-        total:    session.queue.length
+        MP: MP.toFixed(2),
+        N1: N1.toFixed(2), aciertosT, fallosT, blancasT, totalT,
+        N2: N2.toFixed(2), aciertosP, fallosP, blancasP, totalP,
     });
 }
 
-function showExamResults({ nota, aciertos, fallos, blancas, total }) {
-    const aprobado = parseFloat(nota) >= total / 2;
+function showExamResults({ MP, N1, aciertosT, fallosT, blancasT, totalT,
+                                N2, aciertosP, fallosP, blancasP, totalP }) {
+    const aprobado = parseFloat(MP) >= 50;
     const elapsed  = session.originalTime - Math.max(0, session.timeLeft || 0);
     const mins     = Math.floor(elapsed / 60);
     const secs     = elapsed % 60;
 
-    document.getElementById('res-emoji').textContent   = aprobado ? '🎓' : '📖';
-    document.getElementById('res-title').textContent   = aprobado ? '¡Aprobado!' : 'No aprobado';
-    document.getElementById('res-sub').textContent     = `${aciertos} correctas · ${fallos} incorrectas · ${blancas} en blanco`;
-    document.getElementById('res-pct').textContent     = nota;
-    document.getElementById('res-correct').textContent = aciertos;
-    document.getElementById('res-wrong').textContent   = fallos;
-    document.getElementById('res-time').textContent    = `${mins}:${secs.toString().padStart(2, '0')}`;
-    document.getElementById('res-avg').textContent     = `${total > 0 ? (elapsed / total).toFixed(1) : 0}s`;
+   document.getElementById('res-emoji').textContent      = aprobado ? '🎓' : '📖';
+    document.getElementById('res-title').textContent      = aprobado ? '¡Aprobado!' : 'No aprobado';
+    document.getElementById('res-sub').textContent        =
+        `${aciertosT + aciertosP} correctas · ${fallosT + fallosP} incorrectas · ${blancasT + blancasP} en blanco`;
+    document.getElementById('res-pct').textContent        = `${MP}`;
+    document.getElementById('res-score-label').textContent = 'Media ponderada (sobre 100)';
+    document.getElementById('res-n1').textContent         = N1;
+    document.getElementById('res-n2').textContent         = N2;
+    document.getElementById('res-exam-detail').style.display = '';
+
+    document.getElementById('res-correct').textContent    = aciertosT + aciertosP;
+    document.getElementById('res-wrong').textContent      = fallosT + fallosP;
+    document.getElementById('res-time').textContent       = `${mins}:${secs.toString().padStart(2, '0')}`;
+    document.getElementById('res-avg').textContent        =
+        `${total > 0 ? (elapsed / total).toFixed(1) : 0}s`;
 
     showScreen('results');
 }
@@ -911,6 +944,9 @@ function showResults() {
     else if (pct >= 70) { emoji = '🎯'; title = '¡Muy bien!'; }
     else if (pct >= 50) { emoji = '📚'; title = 'Sigue practicando'; }
     else                { emoji = '💪'; title = 'Hay que repasar'; }
+
+    document.getElementById('res-exam-detail').style.display = 'none';
+document.getElementById('res-score-label').textContent   = 'Tasa de acierto';
 
     document.getElementById('res-emoji').textContent   = emoji;
     document.getElementById('res-title').textContent   = title;

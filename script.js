@@ -815,7 +815,6 @@ async function nextQuestion() {
 
 // ═══════════════════════════════════════════════
 //  SMART — selección de próxima pregunta
-//  60% nuevas · 40% repaso por peso
 // ═══════════════════════════════════════════════
 async function getSmartNextQuestion() {
     const query = selectedTemario !== 'todos'
@@ -827,36 +826,64 @@ async function getSmartNextQuestion() {
 
     if (validQuestions.length === 0) return null;
 
-    const allIds   = validQuestions.map(q => q.id);
     const allStats = await db.stats.toArray();
     const statsMap = new Map(allStats.map(s => [s.id, s]));
 
-    const candidatasIds = allIds.filter(id => id !== session.lastId);
-    if (candidatasIds.length === 0) return db.preguntas.get(allIds[0]);
+    // Historial reciente: evitar repetir las últimas N preguntas
+    const RECIENTES_MAX = Math.min(4, Math.floor(validQuestions.length * 0.1));
+    if (!session.recentIds) session.recentIds = [];
 
-    const nuevas = candidatasIds.filter(id => !statsMap.has(id));
-    const repaso = allStats
-        .filter(s => candidatasIds.includes(s.id) && ((s.wrong || 0) > 0 || (s.peso || 1) > 1))
-        .sort((a, b) => (b.peso || 1) - (a.peso || 1));
-
-    log('Smart:', { total: allIds.length, nuevas: nuevas.length, repaso: repaso.length });
-
-    let targetId;
-    const azar = Math.random();
-
-    if (nuevas.length > 0 && (repaso.length === 0 || azar < 0.6)) {
-        targetId = nuevas[Math.floor(Math.random() * nuevas.length)];
-        log('Smart → NUEVA, id:', targetId);
-    } else if (repaso.length > 0) {
-        const top = repaso.slice(0, Math.min(3, repaso.length));
-        targetId  = top[Math.floor(Math.random() * top.length)].id;
-        log('Smart → REPASO, id:', targetId);
-    } else {
-        targetId = candidatasIds[Math.floor(Math.random() * candidatasIds.length)];
-        log('Smart → FALLBACK, id:', targetId);
+    let candidatas = validQuestions.filter(q => !session.recentIds.includes(q.id));
+    if (candidatas.length === 0) {
+        session.recentIds = [];
+        candidatas = validQuestions;
     }
 
-    return db.preguntas.get(targetId);
+    // Calcular peso de cada candidata
+    const weighted = candidatas.map(q => {
+        const s = statsMap.get(q.id);
+        let peso;
+
+        if (!s) {
+            // Nunca vista: peso base
+            peso = 3;
+        } else {
+            // Usar el peso acumulado de recordAnswer (refleja historial completo)
+            peso = s.peso || 1;
+
+            // Bonus por tiempo sin ver (s.last es timestamp)
+            if (s.last) {
+                const diasDesde = (Date.now() - s.last) / (1000 * 60 * 60 * 24);
+                peso += Math.min(diasDesde * 0.5, 3); // máximo +3 por antigüedad
+            }
+        }
+
+        return { q, peso };
+    });
+
+    // Lotería ponderada
+    const totalPeso = weighted.reduce((acc, w) => acc + w.peso, 0);
+    let r = Math.random() * totalPeso;
+    let selected = weighted[weighted.length - 1].q;
+
+    for (const { q, peso } of weighted) {
+        r -= peso;
+        if (r <= 0) { selected = q; break; }
+    }
+
+    // Actualizar historial reciente
+    session.recentIds.push(selected.id);
+    if (session.recentIds.length > RECIENTES_MAX) session.recentIds.shift();
+
+    log('Smart →', {
+        candidatas: candidatas.length,
+        recentIds: session.recentIds.length,
+        selected: selected.id,
+        peso: weighted.find(w => w.q.id === selected.id)?.peso.toFixed(2),
+        stats: statsMap.get(selected.id) ?? 'nueva'
+    });
+
+    return selected;
 }
 
 async function prepareNextQuestion() {

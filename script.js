@@ -27,6 +27,8 @@ let session = {
     lastId:          null
 };
 
+window.smartLog = [];
+
 // ═══════════════════════════════════════════════
 //  EVENTOS DOM
 // ═══════════════════════════════════════════════
@@ -875,13 +877,22 @@ async function getSmartNextQuestion() {
     session.recentIds.push(selected.id);
     if (session.recentIds.length > RECIENTES_MAX) session.recentIds.shift();
 
-    log('Smart →', {
-        candidatas: candidatas.length,
-        recentIds: session.recentIds.length,
-        selected: selected.id,
-        peso: weighted.find(w => w.q.id === selected.id)?.peso.toFixed(2),
-        stats: statsMap.get(selected.id) ?? 'nueva'
-    });
+    const logEntry = {
+    t: new Date().toISOString(),
+    id: selected.id,
+    numero: selected.numero_temario,
+    texto: selected.pregunta?.slice(0, 60),
+    peso: weighted.find(w => w.q.id === selected.id)?.peso.toFixed(2),
+    correct: statsMap.get(selected.id)?.correct ?? 0,
+    wrong:   statsMap.get(selected.id)?.wrong   ?? 0,
+    racha:   statsMap.get(selected.id)?.racha   ?? 0,
+    lastDias: statsMap.get(selected.id)?.last
+        ? Math.round((Date.now() - statsMap.get(selected.id).last) / 86400000)
+        : null,
+    candidatas: candidatas.length,
+    recentIds: session.recentIds.length
+};
+window.smartLog.push(logEntry);
 
     return selected;
 }
@@ -893,6 +904,21 @@ async function prepareNextQuestion() {
         session.nextBuffer = null;
     }
 }
+
+window.downloadSmartLog = function() {
+    if (!window.smartLog?.length) { console.log('Log vacío'); return; }
+
+    const header = 'tiempo\tid\tnumero\tpeso\tcorrect\twrong\tracha\tlastDias\tcandidatas\ttexto\n';
+    const rows = window.smartLog.map(e =>
+        `${e.t}\t${e.id}\t${e.numero}\t${e.peso}\t${e.correct}\t${e.wrong}\t${e.racha}\t${e.lastDias ?? 'nunca'}\t${e.candidatas}\t${e.texto}`
+    ).join('\n');
+
+    const blob = new Blob([header + rows], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `smart_log_${Date.now()}.tsv`;
+    a.click();
+};
 
 // ═══════════════════════════════════════════════
 //  ESTADÍSTICAS
@@ -993,6 +1019,11 @@ document.getElementById('res-score-label').textContent   = 'Tasa de acierto';
 
     const reviewBtn = document.getElementById('review-btn');
     if (reviewBtn) reviewBtn.style.display = session.wrongAnswers?.length > 0 ? 'block' : 'none';
+
+    if(session.mode === 'smart')
+    {
+        downloadSmartLog()
+    }
 
     showScreen('results');
 }

@@ -721,7 +721,7 @@ function showExamResults({ MP, N1, aciertosT, fallosT, blancasT, totalT,
     document.getElementById('res-wrong').textContent      = fallosT + fallosP;
     document.getElementById('res-time').textContent       = `${mins}:${secs.toString().padStart(2, '0')}`;
     document.getElementById('res-avg').textContent        =
-        `${total > 0 ? (elapsed / total).toFixed(1) : 0}s`;
+        `${(totalT + totalP) > 0 ? (elapsed / (totalT + totalP)).toFixed(1) : 0}s`;
 
     showScreen('results');
 }

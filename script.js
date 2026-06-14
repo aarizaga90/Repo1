@@ -652,14 +652,16 @@ function confirmFinishExam() {
 async function finishExam() {
     stopExamTimer();
 
+    try{
+
     let aciertosT = 0, fallosT = 0, blancasT = 0;
     let aciertosP = 0, fallosP = 0, blancasP = 0;
 
     for (const q of session.queue) {
         const respuesta = session.answers[q.id];
         const esPractica = q.numero_temario >= 450;
-        const esCorrecta = respuesta !== undefined && respuesta === q.correcta;
-        const esBlanca   = respuesta === undefined;
+        const esBlanca   = respuesta === undefined || respuesta === null;
+        const esCorrecta = !esBlanca && respuesta === q.correcta;
 
         if (esPractica) {
             if (esBlanca)       blancasP++;
@@ -691,6 +693,11 @@ async function finishExam() {
         N1: N1.toFixed(2), aciertosT, fallosT, blancasT, totalT,
         N2: N2.toFixed(2), aciertosP, fallosP, blancasP, totalP,
     });
+
+} catch (err) {
+        console.error('finishExam error:', err);
+        showToast('Error al calcular resultados: ' + err.message);
+    }
 }
 
 function showExamResults({ MP, N1, aciertosT, fallosT, blancasT, totalT,

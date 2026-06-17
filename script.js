@@ -969,7 +969,7 @@ function updateTimerDisplay() {
 
     el.textContent = h > 0
     ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-    : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')};
+    : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 function startExamTimer() {

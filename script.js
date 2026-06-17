@@ -841,41 +841,50 @@ async function getSmartNextQuestion() {
         candidatas = validQuestions;
     }
 
-    // Calcular peso de cada candidata
-    const weighted = candidatas.map(q => {
-        const s = statsMap.get(q.id);
-        let peso;
+    const ahora = Date.now();
 
-        if (!s) {
-            // Nunca vista: peso base
-            peso = 5;
-        } else {
-            // Usar el peso acumulado de recordAnswer (refleja historial completo)
-            peso = s.peso || 1;
+     // FASE 1: vencidas (dueDate <= ahora)
+    const vencidas = candidatas
+        .filter(q => {
+            const s = statsMap.get(q.id);
+            return s && s.dueDate && s.dueDate <= ahora;
+        })
+        .sort((a, b) => statsMap.get(a.id).dueDate - statsMap.get(b.id).dueDate);
 
-            // Bonus por tiempo sin ver (s.last es timestamp)
-            const racha = s.racha || 0;
-            if (racha >= 5) peso *= 0.2;
-            else if (racha >= 3) peso *= 0.5;
+        // FASE 2: nunca vistas
+    const nuevas = candidatas.filter(q => !statsMap.has(q.id));
 
-            if (s.last) {
-                const diasDesde = (Date.now() - s.last) / (1000 * 60 * 60 * 24);
-                const BonusAntiguedad = 1 + Math.min(diasDesde/10,1);
-                peso *= BonusAntiguedad; // máximo +3 por antigüedad
-            }
+    let selected, fase;
+
+    if (vencidas.length > 0) {
+        // Entre las vencidas, dar prioridad a dudosas si las hay
+        const dudosasVencidas = vencidas.filter(q => q.dudosa === 1);
+        const pool = dudosasVencidas.length > 0 ? dudosasVencidas : vencidas;
+        const top = pool.slice(0, Math.min(5, pool.length));
+        selected = top[Math.floor(Math.random() * top.length)];
+        fase = 'VENCIDA';
+
+    } else if (nuevas.length > 0) {
+        selected = nuevas[Math.floor(Math.random() * nuevas.length)];
+        fase = 'NUEVA';
+
+    } else {
+// FALLBACK: lotería ponderada con heurística mejorada
+        const restoCandidatas = candidatas.filter(q => statsMap.has(q.id));
+
+        const weighted = restoCandidatas.map(q => ({
+            q, peso: calcularPesoEfectivo(q, statsMap.get(q.id), ahora)
+        }));
+
+        const totalPeso = weighted.reduce((acc, w) => acc + w.peso, 0);
+        let r = Math.random() * totalPeso;
+        selected = weighted[weighted.length - 1].q;
+
+        for (const { q, peso } of weighted) {
+            r -= peso;
+            if (r <= 0) { selected = q; break; }
         }
-
-        return { q, peso };
-    });
-
-    // Lotería ponderada
-    const totalPeso = weighted.reduce((acc, w) => acc + w.peso, 0);
-    let r = Math.random() * totalPeso;
-    let selected = weighted[weighted.length - 1].q;
-
-    for (const { q, peso } of weighted) {
-        r -= peso;
-        if (r <= 0) { selected = q; break; }
+        fase = 'FALLBACK';
     }
 
     // Actualizar historial reciente
@@ -884,8 +893,12 @@ async function getSmartNextQuestion() {
 
     const logEntry = {
     t: new Date().toISOString(),
+    fase,
     id: selected.id,
     numero: selected.numero_temario,
+    dudosa: selected.dudosa === 1,
+    vencidas: vencidas.length,
+    nuevas: nuevas.length,
     texto: selected.pregunta?.slice(0, 60),
     peso: weighted.find(w => w.q.id === selected.id)?.peso.toFixed(2),
     correct: statsMap.get(selected.id)?.correct ?? 0,
@@ -930,21 +943,56 @@ window.downloadSmartLog = function() {
 // ═══════════════════════════════════════════════
 async function recordAnswer(qId, isCorrect) {
     const existing = await db.stats.get(qId);
-    const stat     = existing || { id: qId, correct: 0, wrong: 0, racha: 0, peso: 1, last: 0 };
+    const stat     = existing || { id: qId, correct: 0, wrong: 0, racha: 0, peso: 1, intervalo: 0, facilidad: 2.5, dueDate: Date.now(),
+        last: 0 };
 
     stat.last = Date.now();
     if (isCorrect) {
         stat.correct = (stat.correct || 0) + 1;
         stat.racha   = (stat.racha   || 0) + 1;
-        stat.peso    = Math.max(0.1, (stat.peso || 1) * 0.5);
+        stat.peso = Math.max(0.05, (stat.peso || 1) * 0.5);
+
+        stat.facilidad = Math.min(3.5, (stat.facilidad || 2.5) + 0.1);
+        if (stat.racha === 1)      stat.intervalo = 1;
+        else if (stat.racha === 2) stat.intervalo = 3;
+        else                       stat.intervalo = Math.round((stat.intervalo || 1) * stat.facilidad);
     } else {
         stat.wrong = (stat.wrong || 0) + 1;
         stat.racha = 0;
         stat.peso  = Math.min(20, (stat.peso || 1) * 2.5);
+
+        stat.facilidad = Math.max(1.3, (stat.facilidad || 2.5) - 0.3);
+        stat.intervalo = 0;
     }
+
+    stat.dueDate = Date.now() + stat.intervalo * 24 * 60 * 60 * 1000;
 
     await db.stats.put(stat);
     homeDirty = true;
+}
+
+function calcularPesoEfectivo(q, s, ahora) {
+    if (!s) return 5;
+
+    let peso = s.peso || 1;
+
+    const total = (s.correct || 0) + (s.wrong || 0);
+    const tasaError = total > 0 ? (s.wrong || 0) / total : 0;
+    peso *= (1 + tasaError);
+
+    if (s.last) {
+        const diasDesde = (ahora - s.last) / (1000 * 60 * 60 * 24);
+        peso *= (1 + Math.min(diasDesde / 10, 1));
+    }
+
+    const racha = s.racha || 0;
+    if (racha >= 5)      peso *= 0.2;
+    else if (racha >= 3) peso *= 0.5;
+
+    // Bonus por marcado como dudosa
+    if (q.dudosa === 1) peso *= 1.5; // +50% de probabilidad relativa
+
+    return peso;
 }
 
 // ═══════════════════════════════════════════════

@@ -917,9 +917,9 @@ async function prepareNextQuestion() {
 window.downloadSmartLog = function() {
     if (!window.smartLog?.length) { console.log('Log vacío'); return; }
 
-    const header = 'tiempo\tid\tnumero\tpeso\tcorrect\twrong\tracha\tlastDias\tcandidatas\ttexto\n';
+    const header = 'tiempo\tid\tnumero\tfase\tvencidads\tnuevas\tdudosa\tpeso\tcorrect\twrong\tracha\tlastDias\tcandidatas\ttexto\n';
     const rows = window.smartLog.map(e =>
-        `${e.t}\t${e.id}\t${e.numero}\t${e.peso}\t${e.correct}\t${e.wrong}\t${e.racha}\t${e.lastDias ?? 'nunca'}\t${e.candidatas}\t${e.texto}`
+        `${e.t}\t${e.id}\t${e.numero}\t${e.fase}\t${e.vencidas}\t${e.nuevas}/t${e.dudosa}\t${e.peso}\t${e.correct}\t${e.wrong}\t${e.racha}\t${e.lastDias ?? 'nunca'}\t${e.candidatas}\t${e.texto}`
     ).join('\n');
 
     const blob = new Blob([header + rows], { type: 'text/plain' });

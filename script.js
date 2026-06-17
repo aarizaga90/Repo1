@@ -822,19 +822,14 @@ async function getSmartNextQuestion() {
     const query = selectedTemario !== 'todos'
         ? db.preguntas.where('temario').equals(selectedTemario)
         : db.preguntas.toCollection();
-
     const validQuestions = (await query.toArray())
         .filter(q => q.correcta !== null && q.correcta !== undefined);
-
     if (validQuestions.length === 0) return null;
-
     const allStats = await db.stats.toArray();
     const statsMap = new Map(allStats.map(s => [s.id, s]));
 
-    // Historial reciente: evitar repetir las últimas N preguntas
     const RECIENTES_MAX = Math.max(4, Math.floor(validQuestions.length * 0.1));
     if (!session.recentIds) session.recentIds = [];
-
     let candidatas = validQuestions.filter(q => !session.recentIds.includes(q.id));
     if (candidatas.length === 0) {
         session.recentIds = [];
@@ -843,7 +838,6 @@ async function getSmartNextQuestion() {
 
     const ahora = Date.now();
 
-     // FASE 1: vencidas (dueDate <= ahora)
     const vencidas = candidatas
         .filter(q => {
             const s = statsMap.get(q.id);
@@ -851,31 +845,28 @@ async function getSmartNextQuestion() {
         })
         .sort((a, b) => statsMap.get(a.id).dueDate - statsMap.get(b.id).dueDate);
 
-        // FASE 2: nunca vistas
     const nuevas = candidatas.filter(q => !statsMap.has(q.id));
 
-    let selected, fase;
+    let selected, fase, pesoSeleccionada;
 
     if (vencidas.length > 0) {
-        // Entre las vencidas, dar prioridad a dudosas si las hay
         const dudosasVencidas = vencidas.filter(q => q.dudosa === 1);
         const pool = dudosasVencidas.length > 0 ? dudosasVencidas : vencidas;
         const top = pool.slice(0, Math.min(5, pool.length));
         selected = top[Math.floor(Math.random() * top.length)];
         fase = 'VENCIDA';
+        pesoSeleccionada = calcularPesoEfectivo(selected, statsMap.get(selected.id), ahora);
 
     } else if (nuevas.length > 0) {
         selected = nuevas[Math.floor(Math.random() * nuevas.length)];
         fase = 'NUEVA';
+        pesoSeleccionada = 5; // peso base de "nunca vista"
 
     } else {
-// FALLBACK: lotería ponderada con heurística mejorada
         const restoCandidatas = candidatas.filter(q => statsMap.has(q.id));
-
         const weighted = restoCandidatas.map(q => ({
             q, peso: calcularPesoEfectivo(q, statsMap.get(q.id), ahora)
         }));
-
         const totalPeso = weighted.reduce((acc, w) => acc + w.peso, 0);
         let r = Math.random() * totalPeso;
         selected = weighted[weighted.length - 1].q;
@@ -885,32 +876,32 @@ async function getSmartNextQuestion() {
             if (r <= 0) { selected = q; break; }
         }
         fase = 'FALLBACK';
+        pesoSeleccionada = weighted.find(w => w.q.id === selected.id)?.peso ?? 0;
     }
 
-    // Actualizar historial reciente
     session.recentIds.push(selected.id);
     if (session.recentIds.length > RECIENTES_MAX) session.recentIds.shift();
 
     const logEntry = {
-    t: new Date().toISOString(),
-    fase,
-    id: selected.id,
-    numero: selected.numero_temario,
-    dudosa: selected.dudosa === 1,
-    vencidas: vencidas.length,
-    nuevas: nuevas.length,
-    texto: selected.pregunta?.slice(0, 60),
-    peso: weighted.find(w => w.q.id === selected.id)?.peso.toFixed(2),
-    correct: statsMap.get(selected.id)?.correct ?? 0,
-    wrong:   statsMap.get(selected.id)?.wrong   ?? 0,
-    racha:   statsMap.get(selected.id)?.racha   ?? 0,
-    lastDias: statsMap.get(selected.id)?.last
-        ? Math.round((Date.now() - statsMap.get(selected.id).last) / 86400000)
-        : null,
-    candidatas: candidatas.length,
-    recentIds: session.recentIds.length
-};
-window.smartLog.push(logEntry);
+        t: new Date().toISOString(),
+        fase,
+        id: selected.id,
+        numero: selected.numero_temario,
+        dudosa: selected.dudosa === 1,
+        vencidas: vencidas.length,
+        nuevas: nuevas.length,
+        texto: selected.pregunta?.slice(0, 60),
+        peso: pesoSeleccionada.toFixed(2),
+        correct: statsMap.get(selected.id)?.correct ?? 0,
+        wrong:   statsMap.get(selected.id)?.wrong   ?? 0,
+        racha:   statsMap.get(selected.id)?.racha   ?? 0,
+        lastDias: statsMap.get(selected.id)?.last
+            ? Math.round((Date.now() - statsMap.get(selected.id).last) / 86400000)
+            : null,
+        candidatas: candidatas.length,
+        recentIds: session.recentIds.length
+    };
+    window.smartLog.push(logEntry);
 
     return selected;
 }

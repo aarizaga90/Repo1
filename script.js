@@ -832,7 +832,7 @@ async function getSmartNextQuestion() {
     const statsMap = new Map(allStats.map(s => [s.id, s]));
 
     // Historial reciente: evitar repetir las últimas N preguntas
-    const RECIENTES_MAX = Math.min(4, Math.floor(validQuestions.length * 0.1));
+    const RECIENTES_MAX = Math.max(4, Math.floor(validQuestions.length * 0.1));
     if (!session.recentIds) session.recentIds = [];
 
     let candidatas = validQuestions.filter(q => !session.recentIds.includes(q.id));
@@ -962,9 +962,14 @@ function stopTimer() {
 function updateTimerDisplay() {
     const el = document.getElementById('timer');
     if (!el) return;
-    const mins = Math.floor(secondsElapsed / 60);
-    const secs = secondsElapsed % 60;
-    el.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+    const h = Math.floor(secondsElapsed / 3600);
+    const m = Math.floor((secondsElapsed % 3600) / 60);
+    const s = secondsElapsed % 60;
+
+    el.textContent = h > 0
+    ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')};
 }
 
 function startExamTimer() {

@@ -122,6 +122,7 @@ function renderMoreQuestions() {
         const letra       = q.temario?.toLowerCase().startsWith('e') ? 'E' : 'C';
         const code        = `${q.numero_temario || 'S/N'}-${letra}`;
         const sinRespuesta = q.correcta === null || q.correcta === undefined;
+        const conf         = ['alta', 'media', 'baja'].includes(q.confianza) ? q.confianza : 'media';
 
         const div = document.createElement('div');
         div.className = 'q-admin-card';
@@ -129,6 +130,7 @@ function renderMoreQuestions() {
             <div class="q-admin-header">
                 <span class="q-code">${code}</span>
                 ${sinRespuesta ? '<span class="badge-no-answer">Sin respuesta</span>' : ''}
+                ${!sinRespuesta && q.sugerida ? `<span class="badge-sugerida badge-sugerida--${conf}">Sugerida · ${conf}</span>` : ''}
                 <button class="btn-edit" data-id="${q.id}">Editar</button>
             </div>
             <div class="q-admin-text"></div>
@@ -176,6 +178,17 @@ async function abrirEditorCompleto(id) {
     label.style.cssText = 'display:block; margin-bottom:10px;';
     label.textContent = 'OPCIONES (marca la correcta — opcional)';
     optsContainer.appendChild(label);
+
+    // Aviso: respuesta sugerida sin verificar
+    if (q.sugerida && q.correcta !== null && q.correcta !== undefined) {
+        const conf = ['alta', 'media', 'baja'].includes(q.confianza) ? q.confianza : 'media';
+        const aviso = document.createElement('div');
+        aviso.className = `q-hint q-hint--${conf}`;
+        aviso.style.marginBottom = '12px';
+        aviso.innerHTML = sugerenciaHTML(q) +
+            '<p class="q-hint-text q-hint-foot">Al guardar, la respuesta marcada quedará como verificada.</p>';
+        optsContainer.appendChild(aviso);
+    }
 
     // Opciones A–D
     q.opciones.forEach((opt, i) => {
@@ -246,10 +259,12 @@ async function guardarCambios(id) {
         ? null
         : parseInt(checkedRadio.value);
 
+    // Guardar desde el editor = revisada por la persona: deja de ser sugerida
     await db.preguntas.update(id, {
         pregunta: nuevoTexto,
         opciones: nuevasOpciones,
-        correcta: nuevaCorrecta
+        correcta: nuevaCorrecta,
+        sugerida: false
     });
 
     homeDirty = true;

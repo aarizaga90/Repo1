@@ -15,6 +15,10 @@ let examTimerInterval = null;
 let secondsElapsed  = 0;
 let toastTimer      = null;
 
+// Primera pregunta del bloque práctico (casos) de la parte específica
+const PRACTICO_DESDE = 460;
+const PRACTICO_HASTA = 500;
+
 let session = {
     mode:            'all',
     queue:           [],
@@ -185,7 +189,7 @@ async function selectModeSecure(el, mode, target) {
             html: `<div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">${temarioSelectorHTML}${rangeHTML}</div>`
         },
         exam: {
-            desc: 'Simulacro oficial · 100 preguntas proporcionales · bloque 450-500 al final.',
+            desc: `Simulacro oficial · 100 preguntas proporcionales · casos prácticos (${PRACTICO_DESDE}-${PRACTICO_HASTA}) al final.`,
             html: `
                 <div style="display:flex; gap:10px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; align-items:flex-end;">
                     <div style="flex:1;">
@@ -422,19 +426,19 @@ async function startExamSession() {
         return;
     }
 
-    // Bloque 450-500 (preguntas prácticas)
-    const tramo450 = especValid
-        .filter(q => q.numero_temario >= 450 && q.numero_temario <= 500)
+    // Bloque práctico (casos)
+    const tramoPractico = especValid
+        .filter(q => q.numero_temario >= PRACTICO_DESDE && q.numero_temario <= PRACTICO_HASTA)
         .sort(() => Math.random() - 0.5);
 
-   const selectedPractico = tramo450
-        .slice(0, Math.min(TARGET_PRACTICO, tramo450.length))
+    const selectedPractico = tramoPractico
+        .slice(0, Math.min(TARGET_PRACTICO, tramoPractico.length))
         .sort((a, b) => a.numero_temario - b.numero_temario);
 
-    const especTeorico = especValid.filter(q => q.numero_temario < 450);
+    const especTeorico = especValid.filter(q => q.numero_temario < PRACTICO_DESDE);
     const totalTeorico = comunValid.length + especTeorico.length;
 
-    if (totalTeorico + tramo450.length === 0) {
+    if (totalTeorico + tramoPractico.length === 0) {
         showToast('No hay preguntas disponibles');
         return;
     }
@@ -542,6 +546,10 @@ function renderCurrentQuestion() {
     const esInfinito = total === Infinity;
     const code      = getQuestionCode(q);
 
+    // Caso práctico (si lo hay) y pista de respuesta sugerida
+    renderCaso(q);
+    hideSugerencia();
+
     // Contadores
     document.getElementById('q-text').textContent      = q.pregunta || q.texto || '';
     document.getElementById('prog-current').textContent = code;                             // "181-C" en el header izquierda
@@ -588,6 +596,140 @@ function renderCurrentQuestion() {
         updateExamNavigation(idx, total);
     }
 }
+
+// ── Caso práctico: panel plegable ─────────────
+// Desplegado en la primera pregunta de cada caso; plegado en las siguientes
+// del mismo caso. En sesiones aleatorias rara vez coinciden dos seguidas,
+// así que el caso aparece casi siempre desplegado.
+function renderCaso(q) {
+    const cont = document.getElementById('q-caso');
+    if (!cont) return;
+
+    const caso = q.caso;
+    if (!caso) {
+        cont.hidden = true;
+        cont.innerHTML = '';
+        session.lastCasoId = null;
+        return;
+    }
+
+    const usaCola   = session.mode !== 'smart' && Array.isArray(session.queue) && session.queue.length > 0;
+    const anterior  = usaCola ? session.queue[session.index - 1] : null;
+    const abierto   = usaCola
+        ? anterior?.caso?.id !== caso.id
+        : session.lastCasoId !== caso.id;
+    session.lastCasoId = caso.id;
+
+    cont.hidden = false;
+    cont.innerHTML = `
+        <details class="caso"${abierto ? ' open' : ''}>
+            <summary class="caso-summary">
+                <span class="caso-tag">Caso ${caso.id}</span>
+                <span class="caso-titulo"></span>
+                <span class="caso-chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="caso-body"></div>
+        </details>`;
+    cont.querySelector('.caso-titulo').textContent = caso.titulo;
+
+    const body = cont.querySelector('.caso-body');
+    caso.parrafos.forEach(texto => {
+        const p = document.createElement('p');
+        if (texto.startsWith('•')) {
+            p.className   = 'caso-bullet';
+            p.textContent = texto.replace(/^•\s*/, '');
+        } else {
+            p.textContent = texto;
+        }
+        body.appendChild(p);
+    });
+
+    (caso.imagenes || []).forEach(img => {
+        const btn = document.createElement('button');
+        btn.type      = 'button';
+        btn.className = 'caso-img-btn';
+        btn.setAttribute('aria-label', `Ampliar imagen: ${img.alt}`);
+        btn.innerHTML = '<img loading="lazy" decoding="async"><span class="caso-img-hint">🔍 Toca para ampliar</span>';
+        const el = btn.querySelector('img');
+        el.src = img.src;
+        el.alt = img.alt;
+        btn.onclick = () => openLightbox(img);
+        body.appendChild(btn);
+    });
+}
+
+// ── Respuesta sugerida (sin verificar) ────────
+function hideSugerencia() {
+    const el = document.getElementById('q-hint');
+    if (!el) return;
+    el.hidden = true;
+    el.innerHTML = '';
+}
+
+function sugerenciaHTML(q) {
+    const conf = ['alta', 'media', 'baja'].includes(q.confianza) ? q.confianza : 'media';
+    return `
+        <div class="q-hint-head">
+            <span class="q-hint-dot" aria-hidden="true"></span>
+            Respuesta sugerida · confianza ${conf}
+        </div>
+        ${q.justificacion ? `<p class="q-hint-text">${escapeHtml(q.justificacion)}</p>` : ''}`;
+}
+
+function showSugerencia(q) {
+    const el = document.getElementById('q-hint');
+    if (!el || !q.sugerida) return;
+    const conf = ['alta', 'media', 'baja'].includes(q.confianza) ? q.confianza : 'media';
+    el.className = `q-hint q-hint--${conf}`;
+    el.innerHTML = sugerenciaHTML(q);
+    el.hidden = false;
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+// ── Visor de imágenes a pantalla completa ─────
+function openLightbox(img) {
+    const lb = document.getElementById('lightbox');
+    if (!lb) return;
+    const el = lb.querySelector('.lightbox-img');
+    el.src = img.src;
+    el.alt = img.alt;
+    lb.querySelector('.lightbox-title').textContent = img.alt;
+    setLightboxZoom(false);
+    lb.hidden = false;
+    lb.querySelector('.lightbox-close').focus();
+}
+
+function closeLightbox() {
+    const lb = document.getElementById('lightbox');
+    if (lb) lb.hidden = true;
+}
+
+function setLightboxZoom(zoom) {
+    const lb = document.getElementById('lightbox');
+    if (!lb) return;
+    lb.classList.toggle('zoomed', zoom);
+    const btn = lb.querySelector('.lightbox-zoom');
+    btn.textContent = zoom ? 'Ajustar' : 'Ampliar';
+    btn.setAttribute('aria-pressed', String(zoom));
+    const scroll = lb.querySelector('.lightbox-scroll');
+    requestAnimationFrame(() => {
+        scroll.scrollLeft = zoom ? (scroll.scrollWidth - scroll.clientWidth) / 2 : 0;
+        scroll.scrollTop  = 0;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const lb = document.getElementById('lightbox');
+    if (!lb) return;
+    lb.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+    lb.querySelector('.lightbox-zoom').addEventListener('click', () =>
+        setLightboxZoom(!lb.classList.contains('zoomed')));
+    lb.querySelector('.lightbox-img').addEventListener('click', () =>
+        setLightboxZoom(!lb.classList.contains('zoomed')));
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !lb.hidden) closeLightbox();
+    });
+});
 
 // ── Examen: navegación ────────────────────────
 function updateExamNavigation(idx, total) {
@@ -661,7 +803,7 @@ async function finishExam() {
 
     for (const q of session.queue) {
         const respuesta = session.answers[q.id];
-        const esPractica = q.numero_temario >= 450;
+        const esPractica = q.temario === 'específico' && q.numero_temario >= PRACTICO_DESDE;
         const esBlanca   = respuesta === undefined || respuesta === null;
         const esCorrecta = !esBlanca && respuesta === q.correcta;
 
@@ -784,6 +926,9 @@ async function selectAnswer(chosen) {
     document.getElementById('exam-footer').style.display   = 'none';
     document.getElementById('answer-footer').style.display = 'block';
     document.getElementById('study').classList.add('footer-visible');
+
+    // Tras mostrar el pie, para que la pista quede visible sobre él
+    showSugerencia(q);
 
     const isLast = session.mode === 'smart'
         ? session.index + 1 >= SMART_SESSION_LENGTH
@@ -1113,6 +1258,7 @@ function renderReview() {
                 <span class="option-letter">${letters[correct]}</span>
                 <span class="review-choice-text">${escapeHtml(q.opciones[correct])}</span>
             </div>
+            ${q.sugerida ? `<div class="q-hint q-hint--${['alta', 'media', 'baja'].includes(q.confianza) ? q.confianza : 'media'}">${sugerenciaHTML(q)}</div>` : ''}
         </div>`
     ).join('');
 }
@@ -1204,13 +1350,30 @@ async function handleFileImport(e) {
             throw new Error('Formato incorrecto (faltan campos requeridos)');
         }
 
-        const cleanData = data.map(q => ({
-            temario:        q.temario,
-            numero_temario: q.numero_temario,
-            pregunta:       q.pregunta,
-            opciones:       q.opciones,
-            correcta:       q.correcta !== undefined ? q.correcta : null
-        }));
+        const cleanData = data.map(q => {
+            const limpia = {
+                temario:        q.temario,
+                numero_temario: q.numero_temario,
+                pregunta:       q.pregunta,
+                opciones:       q.opciones,
+                correcta:       q.correcta !== undefined ? q.correcta : null
+            };
+            // Campos opcionales: respuesta sugerida sin verificar y caso práctico
+            if (q.sugerida) {
+                limpia.sugerida      = true;
+                limpia.confianza     = q.confianza ?? 'media';
+                limpia.justificacion = q.justificacion ?? '';
+            }
+            if (q.caso && Array.isArray(q.caso.parrafos)) {
+                limpia.caso = {
+                    id:       q.caso.id,
+                    titulo:   q.caso.titulo ?? '',
+                    parrafos: q.caso.parrafos,
+                    imagenes: Array.isArray(q.caso.imagenes) ? q.caso.imagenes : []
+                };
+            }
+            return limpia;
+        });
 
         await db.preguntas.clear();
         await db.stats.clear();

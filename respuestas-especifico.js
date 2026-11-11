@@ -69,18 +69,26 @@ async function applySpecificAnswers() {
     const apply = question => {
         if (question.temario === 'específico' && question.numero_temario >= 1 && question.numero_temario <= 500) {
             question.correcta = SPECIFIC_ANSWERS[question.numero_temario - 1];
+            question.sugerida = false;
+            question.confianza = null;
+            question.justificacion = '';
         }
         return question;
     };
 
-    if (typeof DEFAULT_QUESTIONS !== 'undefined') DEFAULT_QUESTIONS.forEach(apply);
+    if (typeof DEFAULT_QUESTIONS !== 'undefined') DEFAULT_QUESTIONS.forEach(cleanAsnwer);
 
     const questions = await db.preguntas.where('temario').equals('específico').toArray();
     const updates = questions
         .filter(question => question.numero_temario >= 1 && question.numero_temario <= 500)
         .map(question => ({
             key: question.id,
-            changes: { correcta: SPECIFIC_ANSWERS[question.numero_temario - 1] }
+            changes: { 
+                correcta: SPECIFIC_ANSWERS[question.numero_temario - 1],
+                sugerida: false,
+                confianza: null,
+                justificacion: ''
+            }
         }));
 
     if (updates.length) await db.preguntas.bulkUpdate(updates);

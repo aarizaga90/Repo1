@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opos-v5';
+const CACHE_NAME = 'opos-v6';
 
 const ASSETS = [
     './',

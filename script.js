@@ -33,9 +33,9 @@ let session = {
 
 window.smartLog = [];
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  EVENTOS DOM
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
 
     // ── Botones de modo (delegación en #home-actions) ──
@@ -129,22 +129,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  BOOT
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function boot() {
     const pregCount = await db.preguntas.count();
     if (pregCount === 0 && typeof DEFAULT_QUESTIONS !== 'undefined' && DEFAULT_QUESTIONS.length > 0) {
         await db.preguntas.bulkPut(DEFAULT_QUESTIONS);
     }
+    if (typeof applySpecificAnswers === 'function') await applySpecificAnswers();
     await refreshHome();
     await showAppVersion();
     initServiceWorker();
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  HOME
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function selectModeSecure(el, mode, target) {
     if (!mode) return;
 
@@ -176,7 +177,7 @@ async function selectModeSecure(el, mode, target) {
         </div>`;
 
     const rangeHTML = `
-        <div class="control-group" style="flex:0 1 auto; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); height:38px;">
+        <div class="control-group" style="flex:0 1 auto; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
             <span style="font-size:12px; color:var(--muted);">Rango:</span>
             <input type="number" id="range-start" value="1" style="width:55px; border:none; background:transparent; color:var(--accent); font-weight:bold; text-align:center;">
             <span style="color:var(--muted);">-</span>
@@ -205,7 +206,7 @@ async function selectModeSecure(el, mode, target) {
             html: `
                 <div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">
                     ${temarioSelectorHTML}
-                    <div class="control-group" style="flex:0 1 auto; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); height:38px;">
+                    <div class="control-group" style="flex:0 1 auto; display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.08);">
                         <span style="font-size:12px; color:var(--muted);">Cantidad:</span>
                         <input type="number" id="smart-limit" value="20" min="1" max="${totalPregs}" style="width:50px; border:none; background:transparent; color:var(--accent); font-weight:bold; text-align:center;">
                         <label style="display:flex; align-items:center; gap:6px; font-size:12px;">
@@ -290,7 +291,7 @@ async function refreshHome() {
     const actionsEl = document.getElementById('home-actions');
     emptyEl.style.display   = total === 0 ? 'block' : 'none';
     actionsEl.style.display = total === 0 ? 'none'  : 'block';
-    
+
     loadDudasCount();
 }
 
@@ -325,9 +326,9 @@ async function loadDudasCount() {
     if (el) el.textContent = count > 0 ? `${count} preguntas` : 'Sin marcar';
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  STUDY — enrutador
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function startStudy() {
     const total = await db.preguntas.count();
     if (total === 0) { showToast('No hay preguntas cargadas'); return; }
@@ -350,31 +351,30 @@ async function startStudy() {
 // ── Dudosas ──────────────────────────────────────
 
 async function startDudosasSession() {
-// ── Modo DUDOSAS: carga directa desde DB ────
-        const pool = await db.preguntas.where('dudosa').equals(1).toArray();
-        if (pool.length === 0) {
-            showToast('No tienes preguntas marcadas como duda 👍');
-            return;
-        }
-        pool.sort(() => Math.random() - 0.5);
-        session = {
-            mode: 'dudosas',
-            queue: pool,
-            index: 0,
-            currentQuestion: pool[0],
-            correct: 0,
-            wrong: 0,
-            wrongAnswers: [],
-            lastId: pool[0].id,
-            nextBuffer: null,
-            isExam: false,
-            timeLeft: 0,
-            answers: {}
-        };
-        startTimer();
-        showScreen('study');
-        renderCurrentQuestion();
+    const pool = await db.preguntas.where('dudosa').equals(1).toArray();
+    if (pool.length === 0) {
+        showToast('No tienes preguntas marcadas como duda 👍');
         return;
+    }
+    pool.sort(() => Math.random() - 0.5);
+    session = {
+        mode: 'dudosas',
+        queue: pool,
+        index: 0,
+        currentQuestion: pool[0],
+        correct: 0,
+        wrong: 0,
+        wrongAnswers: [],
+        lastId: pool[0].id,
+        nextBuffer: null,
+        isExam: false,
+        timeLeft: 0,
+        answers: {}
+    };
+    startTimer();
+    showScreen('study');
+    renderCurrentQuestion();
+    return;
 }
 
 // ── Smart ──────────────────────────────────────
@@ -410,7 +410,7 @@ async function startSmartSession() {
 async function startExamSession() {
     const examMinutes  = parseInt(document.getElementById('exam-time')?.value) || 75;
     const TARGET_TEORICO = 80;
-    const TARGET_PRACTICO    = 20;
+    const TARGET_PRACTICO = 20;
 
     const [allComun, allEspec] = await Promise.all([
         db.preguntas.where('temario').equals('común').toArray(),
@@ -508,14 +508,12 @@ async function startStandardSession() {
 
 function applyModeFilter(pool, statsMap) {
     const s = parseInt(document.getElementById('range-start')?.value, 10) || 1;
-    const e = parseInt(document.getElementById('range-end')?.value, 10)   || arr.length;
+    const e = parseInt(document.getElementById('range-end')?.value, 10) || pool.length;
 
     const getRange = (arr) => {
         if (selectedTemario !== 'todos') {
-            // Filtrar por numero_temario — el rango referencia el número real de pregunta
             return arr.filter(q => q.numero_temario >= s && q.numero_temario <= e);
         }
-        // Para 'todos': slice por posición (los numero_temario se solapan entre bloques)
         return arr.slice(Math.max(0, s - 1), Math.min(arr.length, e));
     };
 
@@ -528,9 +526,9 @@ function applyModeFilter(pool, statsMap) {
     }
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  RENDER
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function renderCurrentQuestion() {
     const q         = session.currentQuestion;
     const container = document.getElementById('question-scroll');
@@ -546,19 +544,16 @@ function renderCurrentQuestion() {
     const esInfinito = total === Infinity;
     const code      = getQuestionCode(q);
 
-    // Caso práctico (si lo hay) y pista de respuesta sugerida
     renderCaso(q);
     hideSugerencia();
 
-    // Contadores
     document.getElementById('q-text').textContent      = q.pregunta || q.texto || '';
-    document.getElementById('prog-current').textContent = code;                             // "181-C" en el header izquierda
-    document.getElementById('prog-of').textContent      = esInfinito ? String(idx + 1) : `${idx + 1} / ${total}`; // "15 / 698" derecha
+    document.getElementById('prog-current').textContent = code;
+    document.getElementById('prog-of').textContent      = esInfinito ? String(idx + 1) : `${idx + 1} / ${total}`;
     document.getElementById('study-fill').style.width   = esInfinito ? '0%' : `${idx / total * 100}%`;
-    document.getElementById('dudosa-btn').style.display = isExam ? 'none' : 'flex'
+    document.getElementById('dudosa-btn').style.display = isExam ? 'none' : 'flex';
     document.getElementById('question-scroll').scrollTop = 0;
 
-    // Footers
     const answerFooter = document.getElementById('answer-footer');
     const examFooter   = document.getElementById('exam-footer');
 
@@ -572,7 +567,6 @@ function renderCurrentQuestion() {
         document.getElementById('study').classList.remove('footer-visible');
     }
 
-    // Opciones
     const list    = document.getElementById('options-list');
     const letters = ['A', 'B', 'C', 'D'];
     list.innerHTML = '';
@@ -590,17 +584,12 @@ function renderCurrentQuestion() {
         list.appendChild(btn);
     });
 
-    // Nav examen
     if (isExam) {
         document.getElementById('study').classList.add('footer-visible');
         updateExamNavigation(idx, total);
     }
 }
 
-// ── Caso práctico: panel plegable ─────────────
-// Desplegado en la primera pregunta de cada caso; plegado en las siguientes
-// del mismo caso. En sesiones aleatorias rara vez coinciden dos seguidas,
-// así que el caso aparece casi siempre desplegado.
 function renderCaso(q) {
     const cont = document.getElementById('q-caso');
     if (!cont) return;
@@ -658,7 +647,6 @@ function renderCaso(q) {
     });
 }
 
-// ── Respuesta sugerida (sin verificar) ────────
 function hideSugerencia() {
     const el = document.getElementById('q-hint');
     if (!el) return;
@@ -686,7 +674,6 @@ function showSugerencia(q) {
     el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
-// ── Visor de imágenes a pantalla completa ─────
 function openLightbox(img) {
     const lb = document.getElementById('lightbox');
     if (!lb) return;
@@ -731,7 +718,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ── Examen: navegación ────────────────────────
 function updateExamNavigation(idx, total) {
     if (session.mode !== 'exam') return;
 
@@ -796,49 +782,46 @@ function confirmFinishExam() {
 async function finishExam() {
     stopExamTimer();
 
-    try{
+    try {
+        let aciertosT = 0, fallosT = 0, blancasT = 0;
+        let aciertosP = 0, fallosP = 0, blancasP = 0;
 
-    let aciertosT = 0, fallosT = 0, blancasT = 0;
-    let aciertosP = 0, fallosP = 0, blancasP = 0;
+        for (const q of session.queue) {
+            const respuesta = session.answers[q.id];
+            const esPractica = q.temario === 'específico' && q.numero_temario >= PRACTICO_DESDE;
+            const esBlanca   = respuesta === undefined || respuesta === null;
+            const esCorrecta = !esBlanca && respuesta === q.correcta;
 
-    for (const q of session.queue) {
-        const respuesta = session.answers[q.id];
-        const esPractica = q.temario === 'específico' && q.numero_temario >= PRACTICO_DESDE;
-        const esBlanca   = respuesta === undefined || respuesta === null;
-        const esCorrecta = !esBlanca && respuesta === q.correcta;
+            if (esPractica) {
+                if (esBlanca)       blancasP++;
+                else if (esCorrecta) aciertosP++;
+                else                 fallosP++;
+            } else {
+                if (esBlanca)       blancasT++;
+                else if (esCorrecta) aciertosT++;
+                else                 fallosT++;
+            }
 
-        if (esPractica) {
-            if (esBlanca)       blancasP++;
-            else if (esCorrecta) aciertosP++;
-            else                 fallosP++;
-        } else {
-            if (esBlanca)       blancasT++;
-            else if (esCorrecta) aciertosT++;
-            else                 fallosT++;
+            if (!esBlanca) {
+                await recordAnswer(q.id, esCorrecta);
+                if (!esCorrecta) session.wrongAnswers.push({ question: q, chosen: respuesta, correct: q.correcta });
+            }
         }
 
-        if (!esBlanca) {
-            await recordAnswer(q.id, esCorrecta);
-            if (!esCorrecta) session.wrongAnswers.push({ question: q, chosen: respuesta, correct: q.correcta });
-        }
-    }
+        const totalT = aciertosT + fallosT + blancasT;
+        const totalP = aciertosP + fallosP + blancasP;
 
-    const totalT = aciertosT + fallosT + blancasT;
-    const totalP = aciertosP + fallosP + blancasP;
+        const N1 = totalT > 0 ? (aciertosT / totalT) * 100 : 0;
+        const N2 = totalP > 0 ? (aciertosP / totalP) * 100 : 0;
+        const MP = (N1 * 65 + N2 * 35) / 100;
 
-    // Notas sobre 100 (aciertos / total * 100, sin penalización)
-    const N1 = totalT > 0 ? (aciertosT / totalT) * 100 : 0;
-    const N2 = totalP > 0 ? (aciertosP / totalP) * 100 : 0;
-    const MP = (N1 * 65 + N2 * 35) / 100;
+        showExamResults({
+            MP: MP.toFixed(2),
+            N1: N1.toFixed(2), aciertosT, fallosT, blancasT, totalT,
+            N2: N2.toFixed(2), aciertosP, fallosP, blancasP, totalP,
+        });
 
-
-    showExamResults({
-        MP: MP.toFixed(2),
-        N1: N1.toFixed(2), aciertosT, fallosT, blancasT, totalT,
-        N2: N2.toFixed(2), aciertosP, fallosP, blancasP, totalP,
-    });
-
-} catch (err) {
+    } catch (err) {
         console.error('finishExam error:', err);
         showToast('Error al calcular resultados: ' + err.message);
     }
@@ -851,7 +834,7 @@ function showExamResults({ MP, N1, aciertosT, fallosT, blancasT, totalT,
     const mins     = Math.floor(elapsed / 60);
     const secs     = elapsed % 60;
 
-   document.getElementById('res-emoji').textContent      = aprobado ? '🎓' : '📖';
+    document.getElementById('res-emoji').textContent      = aprobado ? '🎓' : '📖';
     document.getElementById('res-title').textContent      = aprobado ? '¡Aprobado!' : 'No aprobado';
     document.getElementById('res-sub').textContent        =
         `${aciertosT + aciertosP} correctas · ${fallosT + fallosP} incorrectas · ${blancasT + blancasP} en blanco`;
@@ -870,9 +853,9 @@ function showExamResults({ MP, N1, aciertosT, fallosT, blancasT, totalT,
     showScreen('results');
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  RESPUESTA
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function selectAnswer(chosen) {
     if (answered) return;
     answered = true;
@@ -880,13 +863,11 @@ async function selectAnswer(chosen) {
     const q = session.currentQuestion;
     if (!q) return;
 
-    // Salvaguarda: pregunta sin respuesta (no debería llegar aquí)
     if (!session.isExam && (q.correcta === null || q.correcta === undefined)) {
         nextQuestion();
         return;
     }
 
-    // Modo examen: guardar/anular respuesta sin feedback
     if (session.isExam) {
         if (session.answers[q.id] === chosen) {
             delete session.answers[q.id];
@@ -901,7 +882,6 @@ async function selectAnswer(chosen) {
         return;
     }
 
-    // Modo estudio: feedback inmediato
     const correct = q.correcta;
     const opts    = document.querySelectorAll('.option');
     opts.forEach(o => { o.classList.add('disabled'); o.onclick = null; });
@@ -927,7 +907,6 @@ async function selectAnswer(chosen) {
     document.getElementById('answer-footer').style.display = 'block';
     document.getElementById('study').classList.add('footer-visible');
 
-    // Tras mostrar el pie, para que la pista quede visible sobre él
     showSugerencia(q);
 
     const isLast = session.mode === 'smart'
@@ -960,9 +939,9 @@ async function nextQuestion() {
     }
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  SMART — selección de próxima pregunta
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function getSmartNextQuestion() {
     const query = selectedTemario !== 'todos'
         ? db.preguntas.where('temario').equals(selectedTemario)
@@ -1005,7 +984,7 @@ async function getSmartNextQuestion() {
     } else if (nuevas.length > 0) {
         selected = nuevas[Math.floor(Math.random() * nuevas.length)];
         fase = 'NUEVA';
-        pesoSeleccionada = 5; // peso base de "nunca vista"
+        pesoSeleccionada = 5;
 
     } else {
         const restoCandidatas = candidatas.filter(q => statsMap.has(q.id));
@@ -1040,9 +1019,7 @@ async function getSmartNextQuestion() {
         correct: statsMap.get(selected.id)?.correct ?? 0,
         wrong:   statsMap.get(selected.id)?.wrong   ?? 0,
         racha:   statsMap.get(selected.id)?.racha   ?? 0,
-        lastDias: statsMap.get(selected.id)?.last
-            ? Math.round((Date.now() - statsMap.get(selected.id).last) / 86400000)
-            : null,
+        lastDias: statsMap.get(selected.id)?.last ? Math.round((Date.now() - statsMap.get(selected.id).last) / 86400000) : null,
         candidatas: candidatas.length,
         recentIds: session.recentIds.length
     };
@@ -1074,13 +1051,12 @@ window.downloadSmartLog = function() {
     a.click();
 };
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  ESTADÍSTICAS
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function recordAnswer(qId, isCorrect) {
     const existing = await db.stats.get(qId);
-    const stat     = existing || { id: qId, correct: 0, wrong: 0, racha: 0, peso: 1, intervalo: 0, facilidad: 2.5, dueDate: Date.now(),
-        last: 0 };
+    const stat     = existing || { id: qId, correct: 0, wrong: 0, racha: 0, peso: 1, intervalo: 0, facilidad: 2.5, dueDate: Date.now(), last: 0 };
 
     stat.last = Date.now();
     if (isCorrect) {
@@ -1125,15 +1101,14 @@ function calcularPesoEfectivo(q, s, ahora) {
     if (racha >= 5)      peso *= 0.2;
     else if (racha >= 3) peso *= 0.5;
 
-    // Bonus por marcado como dudosa
-    if (q.dudosa === 1) peso *= 1.5; // +50% de probabilidad relativa
+    if (q.dudosa === 1) peso *= 1.5;
 
     return peso;
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  CRONÓMETROS
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function startTimer() {
     stopTimer();
     secondsElapsed = 0;
@@ -1182,9 +1157,9 @@ function updateExamTimerDisplay() {
     el.style.color = t <= 60 ? 'var(--wrong)' : 'var(--accent)';
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  RESULTS
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function showResults() {
     stopTimer();
     const total = session.correct + session.wrong;
@@ -1200,7 +1175,7 @@ function showResults() {
     else                { emoji = '💪'; title = 'Hay que repasar'; }
 
     document.getElementById('res-exam-detail').style.display = 'none';
-document.getElementById('res-score-label').textContent   = 'Tasa de acierto';
+    document.getElementById('res-score-label').textContent   = 'Tasa de acierto';
 
     document.getElementById('res-emoji').textContent   = emoji;
     document.getElementById('res-title').textContent   = title;
@@ -1214,17 +1189,16 @@ document.getElementById('res-score-label').textContent   = 'Tasa de acierto';
     const reviewBtn = document.getElementById('review-btn');
     if (reviewBtn) reviewBtn.style.display = session.wrongAnswers?.length > 0 ? 'block' : 'none';
 
-    if(session.mode === 'smart')
-    {
-        downloadSmartLog()
+    if (session.mode === 'smart') {
+        downloadSmartLog();
     }
 
     showScreen('results');
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  REVISIÓN DE FALLOS
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function renderReview() {
     const list    = document.getElementById('review-list');
     const countEl = document.getElementById('review-count');
@@ -1263,9 +1237,9 @@ function renderReview() {
     ).join('');
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  HISTORIAL
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 async function renderHistory() {
     const list = document.getElementById('hist-list');
     const [allQuestions, allStats] = await Promise.all([
@@ -1322,9 +1296,9 @@ async function clearHistory() {
     });
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  IMPORTAR PREGUNTAS
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function openImport() {
     document.getElementById('import-overlay').classList.add('open');
     const st = document.getElementById('import-status');
@@ -1358,7 +1332,6 @@ async function handleFileImport(e) {
                 opciones:       q.opciones,
                 correcta:       q.correcta !== undefined ? q.correcta : null
             };
-            // Campos opcionales: respuesta sugerida sin verificar y caso práctico
             if (q.sugerida) {
                 limpia.sugerida      = true;
                 limpia.confianza     = q.confianza ?? 'media';
@@ -1410,9 +1383,9 @@ function showStatus(msg, ok) {
     el.className   = `import-status ${ok ? 'ok' : 'err'}`;
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  NAVEGACIÓN
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id)?.classList.add('active');
@@ -1421,7 +1394,6 @@ function showScreen(id) {
     if (id === 'home' && homeDirty) { refreshHome(); homeDirty = false; }
     if (id !== 'study') { stopTimer(); stopExamTimer(); }
 
-    // Limpiar FAB del admin al salir
     if (id !== 'admin-list') {
         const fab = document.getElementById('scroll-top-btn');
         if (fab?._scrollHandler) {
@@ -1431,9 +1403,9 @@ function showScreen(id) {
     }
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  SERVICE WORKER
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function initServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
 
@@ -1471,7 +1443,6 @@ function initServiceWorker() {
         }
     };
 
-    // Si load ya ocurrió (carga rápida en PWA), registrar inmediatamente
     if (document.readyState === 'complete') {
         register();
     } else {
@@ -1479,9 +1450,9 @@ function initServiceWorker() {
     }
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  MODAL
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function showModal(msg, { onConfirm, onCancel, confirmText = 'Aceptar', cancelText = 'Cancelar' } = {}) {
     const overlay    = document.getElementById('modal-overlay');
     const msgEl      = document.getElementById('modal-msg');
@@ -1493,7 +1464,6 @@ function showModal(msg, { onConfirm, onCancel, confirmText = 'Aceptar', cancelTe
     cancelBtn.textContent  = cancelText;
     overlay.style.display  = 'flex';
 
-    // Clonar para limpiar listeners anteriores
     const newConfirm = confirmBtn.cloneNode(true);
     const newCancel  = cancelBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
@@ -1503,9 +1473,9 @@ function showModal(msg, { onConfirm, onCancel, confirmText = 'Aceptar', cancelTe
     newCancel.addEventListener('click',  () => { overlay.style.display = 'none'; onCancel?.(); });
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  TOAST
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 function showToast(msg, duration = 2500) {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
@@ -1514,7 +1484,7 @@ function showToast(msg, duration = 2500) {
     toastTimer = setTimeout(() => toast.classList.remove('visible'), duration);
 }
 
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 //  INIT
-// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════
 boot();

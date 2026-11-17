@@ -76,7 +76,7 @@ async function applySpecificAnswers() {
         return question;
     };
 
-    if (typeof DEFAULT_QUESTIONS !== 'undefined') DEFAULT_QUESTIONS.forEach(cleanAsnwer);
+    if (typeof DEFAULT_QUESTIONS !== 'undefined') DEFAULT_QUESTIONS.forEach(apply);
 
     const questions = await db.preguntas.where('temario').equals('específico').toArray();
     const updates = questions

@@ -31,7 +31,7 @@ const DEFAULT_QUESTIONS = [
             "Consultar los datos de carácter personal de la población profesional sanitaria contenidos en los archivos y ficheros del Documento Nacional de Identidad (DNI) y del Número de Identidad de Extranjero (NIE) competencia del Ministerio del Interior, para contrastar la veracidad de la información que consta en el registro.",
             "Consultar los datos de carácter personal de la población profesional sanitaria contenidos en los archivos y ficheros del Documento Nacional de Identidad (DNI) y del Número de Identidad de Extranjero (NIE) competencia del Ministerio del Interior, para contrastar la veracidad de la información que consta en el registro, pero solo si la persona titular no se ha opuesto explícitamente.",
             "Consultar los datos de carácter personal de los profesionales sanitarios contenidos en los archivos y ficheros del Documento Nacional de Identidad (DNI) y del Número de Identidad de Extranjero (NIE) competencia del Ministerio del Interior, para contrastar la veracidad de la información que consta en el registro, pero solo si el titular de los datos da su consentimiento expreso.",
-            "Solo podrá consultar los datos de carácter personal de la población profesional"
+            "Solo podrá consultar los datos de carácter personal de la población profesional sanitaria contenidos en los archivos y ficheros del Documento Nacional de Identidad (DNI) y del Número de Identidad de Extranjero (NIE) en el curso de una investigación sobre una infracción administrativa."
         ],
         "correcta": 0
     },
@@ -55,7 +55,7 @@ const DEFAULT_QUESTIONS = [
             "El nombre, la titulación, la especialidad y la hoja de servicios del personal sanitario que les atiende, así como la categoría y función de dicho personal, si así estuvieran definidas en su centro o institución.",
             "El nombre, la titulación y la especialidad del personal sanitario que les atiende y su categoría, pero no su función en su centro o institución.",
             "El nombre, la titulación y la especialidad del personal sanitario que les atiende, así como la categoría y función de dicho personal, si así estuvieran definidas en su centro o institución.",
-            "El nombre, la titulación y la especialidad del personal sanitario que les atiende, pero"
+            "El nombre, la titulación y la especialidad del personal sanitario que les atiende, pero no su categoría y función en su centro o institución."
         ],
         "correcta": 2
     },
@@ -103,7 +103,7 @@ const DEFAULT_QUESTIONS = [
             "El personal profesional tiene el deber de hacer un uso racional de los recursos diagnósticos y terapéuticos a su cargo, tomando en consideración, entre otros, los costes de sus decisiones y evitando la sobreutilización, la infrautilización y la inadecuada utilización de los mismos.",
             "El personal profesional tiene el deber de prestar una atención sanitaria técnica y profesional adecuada a las necesidades de salud de las personas que atiende, de acuerdo con el estado de desarrollo de los conocimientos científicos de cada momento y con los niveles de calidad y seguridad que se establecen en esta ley y el resto de normas legales y deontológicas aplicables.",
             "El personal profesional tiene el deber de proporcionar a las personas pacientes información precisa sobre su formación profesional, la forma en que han actualizado sus conocimientos y las demandas de responsabilidad que hayan podido derivar en responsabilidades administrativas.",
-            "El personal profesional tiene el deber de respetar la personalidad, dignidad e"
+            "El personal profesional tiene el deber de respetar la personalidad, dignidad e intimidad de las personas a su cuidado y debe respetar su participación en las tomas de decisiones que les afecten. En todo caso, deben ofrecer una información suficiente y adecuada para que puedan ejercer su derecho al consentimiento sobre dichas decisiones."
         ],
         "correcta": 2
     },
@@ -151,7 +151,7 @@ const DEFAULT_QUESTIONS = [
             "Cartera común básica de servicios asistenciales, cartera común suplementaria y cartera común de servicios accesorios.",
             "Cartera común básica nacional de servicios asistenciales y cartera común autonómica de servicios asistenciales.",
             "Cartera común nacional básica de servicios asistenciales, cartera común suplementaria autonómica y cartera común de servicios accesorios autonómicos.",
-            "Cartera común nacional y autonómica básica de servicios asistenciales, cartera"
+            "Cartera común nacional y autonómica básica de servicios asistenciales, cartera común nacional y autonómica suplementaria y cartera común nacional y autonómica de servicios accesorios."
         ],
         "correcta": 0
     },
@@ -163,7 +163,7 @@ const DEFAULT_QUESTIONS = [
             "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, la prestación farmacéutica y la prestación ortoprotésica, cubiertos de forma completa por financiación pública.",
             "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente y la prestación farmacéutica, cubiertos de forma completa por financiación pública.",
             "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, y la prestación ortoprotésica, cubiertos de forma completa por financiación pública.",
-            "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y"
+            "Todas las actividades asistenciales de prevención, diagnóstico, tratamiento y rehabilitación que se realicen en centros sanitarios o sociosanitarios, así como el transporte sanitario urgente, cubiertos de forma completa por financiación pública."
         ],
         "correcta": 3
     },
@@ -175,7 +175,7 @@ const DEFAULT_QUESTIONS = [
             "Únicamente la prestación farmacéutica.",
             "Únicamente la prestación ortoprotésica.",
             "Únicamente la prestación farmacéutica y la prestación ortoprotésica.",
-            "La prestación farmacéutica, la prestación ortoprotésica y la prestación con"
+            "La prestación farmacéutica, la prestación ortoprotésica y la prestación con productos dietéticos."
         ],
         "correcta": 3
     },
@@ -199,7 +199,7 @@ const DEFAULT_QUESTIONS = [
             "Es preceptivo el informe favorable de la Red Española de Agencias de Evaluación de Tecnologías Sanitarias y Prestaciones del Sistema Nacional de Salud, en relación con la eficacia, eficiencia, efectividad, seguridad y utilidad terapéuticas, así como las ventajas y alternativas asistenciales, el cuidado de grupos menos protegidos o de riesgo y las necesidades sociales, así como su impacto económico y organizativo.",
             "Se contará con la participación de la Red Española de Agencias de Evaluación de Tecnologías Sanitarias y Prestaciones del Sistema Nacional de Salud, en la evaluación de la eficacia, eficiencia, efectividad, seguridad y utilidad terapéuticas, así como las ventajas y alternativas asistenciales, el cuidado de grupos menos protegidos o de riesgo y las necesidades sociales, así como su impacto económico y organizativo.",
             "Es preceptivo el informe favorable de las sociedades científicas implicadas, en relación con la eficacia, eficiencia, efectividad, seguridad y utilidad terapéuticas, así como las ventajas y alternativas asistenciales, el cuidado de grupos menos protegidos o de riesgo y las necesidades sociales, así como su impacto económico y organizativo.",
-            "Se contará con la participación de las sociedades científicas implicadas, en la"
+            "Se contará con la participación de las sociedades científicas implicadas, en la evaluación de la eficacia, eficiencia, efectividad, seguridad y utilidad terapéuticas, así como las ventajas y alternativas asistenciales, el cuidado de grupos menos protegidos o de riesgo y las necesidades sociales, así como su impacto económico y organizativo."
         ],
         "correcta": 1
     },
@@ -223,7 +223,7 @@ const DEFAULT_QUESTIONS = [
             "La acreditación de formación continuada a lo largo del desempeño de su carrera profesional.",
             "La competencia acreditada por el título correspondiente acreditativo de la adquisición de conocimientos requeridos para el desempeño del puesto designado.",
             "La aptitud del personal profesional sanitario para integrar y aplicar los conocimientos, habilidades y actitudes asociados a las buenas prácticas de su profesión para resolver los problemas que se le plantean.",
-            "La superación del proceso selectivo oficial convocado por la autoridad competente"
+            "La superación del proceso selectivo oficial convocado por la autoridad competente para la adquisición del vínculo estatutario con los servicios sanitarios."
         ],
         "correcta": 2
     },
@@ -247,7 +247,7 @@ const DEFAULT_QUESTIONS = [
             "Sometimiento pleno a la ley y el derecho.",
             "Igualdad, mérito, capacidad y promoción en el acceso a la condición de personal estatutario.",
             "Integración en el régimen organizativo y funcional del servicio de salud y de sus centros e instituciones.",
-            "Coordinación, cooperación y mutua información entre las Administraciones"
+            "Coordinación, cooperación y mutua información entre las Administraciones sanitarias públicas."
         ],
         "correcta": 1
     },
@@ -259,7 +259,7 @@ const DEFAULT_QUESTIONS = [
             "Incorporación a una plaza de servicio, institución o centro que corresponda en el plazo fijado en la convocatoria tras la superación de las pruebas de selección.",
             "Superación de las pruebas de selección; nombramiento conferido por el órgano competente; e incorporación a una plaza del servicio, institución o centro que corresponda en el plazo de un mes.",
             "Superación de las pruebas de selección; nombramiento conferido por el órgano competente; e incorporación, previo cumplimiento de los requisitos formales en cada caso establecidos, a una plaza del servicio, institución o centro que corresponda en el plazo determinado en la convocatoria.",
-            "Superación de las pruebas de selección; nombramiento conferido por el órgano"
+            "Superación de las pruebas de selección; nombramiento conferido por el órgano competente; e incorporación a una plaza del servicio, institución o centro que corresponda en todo caso en el plazo determinado en la convocatoria."
         ],
         "correcta": 2
     },
@@ -271,7 +271,7 @@ const DEFAULT_QUESTIONS = [
             "No acrediten que reúnen los requisitos y condiciones exigidos en la convocatoria, una vez superado el proceso selectivo.",
             "No acrediten que reúnen los requisitos y condiciones exigidos en la convocatoria, con carácter previo a la superación del proceso selectivo.",
             "No acrediten que reúnen los requisitos y condiciones exigidos en la convocatoria, una vez firmada la convocatoria.",
-            "Una vez superado el proceso selectivo, automáticamente se procede al"
+            "Una vez superado el proceso selectivo, automáticamente se procede al nombramiento por el órgano competente."
         ],
         "correcta": 0
     },
@@ -283,7 +283,7 @@ const DEFAULT_QUESTIONS = [
             "Siempre en caso de pena de inhabilitación especial para empleo o cargo público, afecte o no al correspondiente nombramiento.",
             "En caso de que se adopte la pena de inhabilitación absoluta sea firme o no.",
             "En caso de que se adopte la pena de inhabilitación especial para la correspondiente profesión, siempre que esta exceda de seis años.",
-            "En caso de que se adopte la pena de inhabilitación especial para la correspondiente"
+            "En caso de que se adopte la pena de inhabilitación especial para la correspondiente profesión, siempre que esta exceda de tres años."
         ],
         "correcta": 2
     },
@@ -295,7 +295,7 @@ const DEFAULT_QUESTIONS = [
             "La jubilación puede ser forzosa o voluntaria.",
             "Para que la persona interesada pueda prolongar su permanencia en servicio activo hasta cumplir los 70 años, bastará con que lo solicite voluntariamente.",
             "La jubilación forzosa se declarará al cumplir la persona interesada 65 años.",
-            "Podrá optar a la jubilación voluntaria, total o parcial, el personal estatutario que"
+            "Podrá optar a la jubilación voluntaria, total o parcial, el personal estatutario que reúna los requisitos establecidos en la legislación de Seguridad Social."
         ],
         "correcta": 1
     },
@@ -331,7 +331,7 @@ const DEFAULT_QUESTIONS = [
             "Las retribuciones básicas son: el sueldo asignado a cada categoría en función del título exigido para su desempeño; los trienios; y las pagas extraordinarias.",
             "Las retribuciones básicas serán iguales en todos los servicios de salud independientemente de la anualidad en la que se perciban.",
             "El personal estatutario temporal percibirá la totalidad de las retribuciones que, en el correspondiente servicio de salud, correspondan a su nombramiento, con excepción del complemento de carrera.",
-            "El complemento de atención continuada está destinado a retribuir la iniciativa"
+            "El complemento de atención continuada está destinado a retribuir la iniciativa continuada y permanente de la persona titular del puesto."
         ],
         "correcta": 0
     },
@@ -355,7 +355,7 @@ const DEFAULT_QUESTIONS = [
             "El período de localización es aquel período de tiempo en el que el personal se encuentra únicamente en situación de disponibilidad.",
             "Se considera período de descanso todo período de tiempo que no sea tiempo de trabajo.",
             "El trabajo por turnos es una forma de organización del trabajo en equipo con arreglo al ritmo rotatorio y siempre de tipo continuo.",
-            "El período de localización es aquel período de tiempo en el que el personal se"
+            "El período de localización es aquel período de tiempo en el que el personal se encuentra en situación de disponibilidad a los solos efectos de asegurar su posible localización."
         ],
         "correcta": 1
     },
@@ -367,7 +367,7 @@ const DEFAULT_QUESTIONS = [
             "Mínima de siete horas e incluirá necesariamente el período comprendido entre las cero y las cinco horas de cada día natural.",
             "Mínima de ocho horas e incluirá necesariamente el período comprendido entre las cero y las cinco horas de cada día natural.",
             "Mínima de ocho horas e incluirá necesariamente el período comprendido entre las doce y las cinco horas de cada día natural.",
-            "Mínima de siete horas e incluirá necesariamente el período comprendido entre las"
+            "Mínima de siete horas e incluirá necesariamente el período comprendido entre las doce y las cinco horas de cada día natural."
         ],
         "correcta": 0
     },
@@ -379,7 +379,7 @@ const DEFAULT_QUESTIONS = [
             "Resulta incompatible para el personal estatutario de los servicios de salud el ejercicio de las funciones sanitarias con cualquier otro tipo de funciones.",
             "Al personal estatutario de los servicios de salud le resulta aplicable el mismo régimen de incompatibilidades establecido para el personal funcionario.",
             "Atendiendo a lo que establezca la legislación vigente, el personal estatutario de los servicios de salud podrá compatibilizar las funciones sanitarias y docente.",
-            "Para el personal licenciado sanitario el complemento específico resulta"
+            "Para el personal licenciado sanitario el complemento específico resulta irrenunciable."
         ],
         "correcta": 2
     },
@@ -391,7 +391,7 @@ const DEFAULT_QUESTIONS = [
             "El personal tendrá derecho a un período mínimo que siempre será fijo de descanso ininterrumpido con una duración media de 24 horas semanales.",
             "El período de referencia para el cálculo del período de descanso semanal será de tres meses.",
             "En el caso de que no se hubiera disfrutado del tiempo mínimo de descanso semanal en el período de tres meses se producirá una compensación a través del régimen de descansos alternativos.",
-            "El período de referencia para el cálculo del período de descanso semanal será de dos"
+            "El período de referencia para el cálculo del período de descanso semanal será de dos meses."
         ],
         "correcta": 1
     },
@@ -403,7 +403,7 @@ const DEFAULT_QUESTIONS = [
             "El personal tendrá derecho a una vacación retribuida cuya duración no será inferior en ningún caso a 30 días naturales.",
             "El personal estatutario de los servicios de salud podrá elegir sustituir el período de vacación por una compensación económica.",
             "Solo podrá ser sustituido por una compensación económica el período vacacional anual mediante la programación funcional de los centros, cuando así lo aconsejen razones organizativas.",
-            "Anualmente, el personal tendrá derecho a una vacación retribuida cuya duración no"
+            "Anualmente, el personal tendrá derecho a una vacación retribuida cuya duración no será inferior a 30 días naturales, o al tiempo que proporcionalmente corresponda en función del tiempo de servicios."
         ],
         "correcta": 3
     },
@@ -487,7 +487,7 @@ const DEFAULT_QUESTIONS = [
             "La obligación de dejar constancia escrita de todo proceso diagnóstico o terapéutico.",
             "La obligación de dejar constancia por cualquier medio de todo proceso diagnóstico.",
             "La obligación de dejar constancia por cualquier medio de todo proceso diagnóstico o terapéutico.",
-            "No existe en la Ley ninguna previsión a este respecto, de modo que será el personal"
+            "No existe en la Ley ninguna previsión a este respecto, de modo que será el personal facultativo el que decida si el proceso diagnóstico o terapéutico debe quedar registrado."
         ],
         "correcta": 0
     },
@@ -511,7 +511,7 @@ const DEFAULT_QUESTIONS = [
             "La persona titular de la presidencia y por un número no superior a cinco miembros en representación de la Administración de la Comunidad Autónoma de Euskadi.",
             "La persona titular de la presidencia y por un número no superior a tres miembros en representación de la Administración de la Comunidad Autónoma de Euskadi.",
             "La persona titular de la presidencia y por cinco miembros en representación del Departamento competente en materia de sanidad.",
-            "La persona titular de la presidencia, la Consejería del Departamento competente en"
+            "La persona titular de la presidencia, la Consejería del Departamento competente en materia de sanidad y tres miembros en representación de la Administración de la Comunidad Autónoma de Euskadi."
         ],
         "correcta": 0
     },
@@ -535,7 +535,7 @@ const DEFAULT_QUESTIONS = [
             "Serán aprobadas por la Presidencia a propuesta del consejo de administración.",
             "Se denomina así al número de efectivos de carácter estructural con que cuentan tanto su organización central de administración como las organizaciones de servicios dependientes de Osakidetza-Servicio Vasco de Salud.",
             "Deberán ajustarse al número máximo de efectivos, según grupos profesionales, que anualmente aprobará su consejo de administración a propuesta del Departamento de Sanidad.",
-            "Deberán ajustarse al número máximo de efectivos, según grupos de titulación, que"
+            "Deberán ajustarse al número máximo de efectivos, según grupos de titulación, que anualmente aprobará el Departamento de Sanidad."
         ],
         "correcta": 1
     },
@@ -547,7 +547,7 @@ const DEFAULT_QUESTIONS = [
             "A la inspección de trabajo del País Vasco adscrita al Departamento de trabajo y empleo del Gobierno Vasco.",
             "En todos los casos a las corporaciones locales de la Comunidad Autónoma.",
             "Al Departamento competente en materia de sanidad.",
-            "La inspección en materia sanitaria no es competencia de la Comunidad Autónoma"
+            "La inspección en materia sanitaria no es competencia de la Comunidad Autónoma de Euskadi."
         ],
         "correcta": 2
     },
@@ -571,7 +571,7 @@ const DEFAULT_QUESTIONS = [
             "Las infracciones serán sancionadas exclusivamente con sanción pecuniaria o económica.",
             "En los casos de infracciones muy graves, el Gobierno Vasco podrá acordar el cierre temporal del establecimiento, instalación o servicio por un plazo máximo de cinco años.",
             "Sin perjuicio de la multa que proceda imponer, en ciertos casos, la sanción económica que se imponga podrá ser incrementada hasta el triple de la cuantía del beneficio ilícito obtenido.",
-            "En los casos de infracciones muy graves, el Gobierno Vasco podrá acordar el cierre"
+            "En los casos de infracciones muy graves, el Gobierno Vasco podrá acordar el cierre temporal del establecimiento, instalación o servicio por un plazo máximo de tres años."
         ],
         "correcta": 1
     },
@@ -583,7 +583,7 @@ const DEFAULT_QUESTIONS = [
             "Realizarán su actividad bajo el principio de autonomía económico-financiera y de gestión.",
             "Se configurarán como instituciones de titularidad privada y con personalidad jurídica propia.",
             "Se crearán por ley como entidades de titularidad pública y con personalidad jurídica propia.",
-            "Para realizar su actividad dependen presupuestariamente del ente público"
+            "Para realizar su actividad dependen presupuestariamente del ente público Osakidetza- Servicio Vasco de Salud."
         ],
         "correcta": 0
     },
@@ -595,7 +595,7 @@ const DEFAULT_QUESTIONS = [
             "Este vínculo estatutario se adquiere mediante el cumplimiento de los dos siguientes requisitos: superación del proceso selectivo correspondiente y nombramiento conferido por autoridad competente.",
             "Los principios que rigen el procedimiento selectivo para la adquisición del vínculo estatutario son exclusivamente el de igualdad, mérito y capacidad.",
             "Los instrumentos de clasificación del personal sujeto a este régimen estatutario son el grupo de titulación, el grupo profesional, la categoría y el puesto funcional que se desempeñe.",
-            "El grupo de titulación constituye el instrumento de clasificación del personal en base"
+            "El grupo de titulación constituye el instrumento de clasificación del personal en base al agrupamiento unitario de las aptitudes profesionales y contenido específico da las tareas propias de la prestación."
         ],
         "correcta": 2
     },
@@ -691,7 +691,7 @@ const DEFAULT_QUESTIONS = [
             "Supervisar, controlar y evaluar las políticas de personal del Ente.",
             "Promover acuerdos de cooperación con centros correspondientes a la sanidad privada.",
             "Dirigir el funcionamiento del registro de personal.",
-            "Gestionar los procesos de selección y de provisión que el Consejo de"
+            "Gestionar los procesos de selección y de provisión que el Consejo de Administración determine, por su carácter general, previsible número de aspirantes u otras circunstancias análogas, y, a tal fin, convocarlos, establecer sus bases, programas y contenidos, y designar a los tribunales calificadores de los mismos."
         ],
         "correcta": 1
     },
@@ -715,7 +715,7 @@ const DEFAULT_QUESTIONS = [
             "Oscilará entre dos y tres.",
             "Oscilará entre tres y cuatro.",
             "Oscilará entre cuatro y cinco.",
-            "La normativa que rige su estatuto jurídico no establece un número determinado sino"
+            "La normativa que rige su estatuto jurídico no establece un número determinado sino un máximo de cinco."
         ],
         "correcta": 3
     },
@@ -763,7 +763,7 @@ const DEFAULT_QUESTIONS = [
             "El Consejo de Administración del ente público Osakidetza-Servicio Vasco de Salud.",
             "La organización central de administración y gestión corporativa del ente público Osakidetza-Servicio Vasco de Salud.",
             "La organización de servicios del ente público Osakidetza-Servicio Vasco de Salud.",
-            "A quien ostente la titularidad de la Dirección-Gerencia de cada organización de"
+            "A quien ostente la titularidad de la Dirección-Gerencia de cada organización de servicios sanitarios del Osakidetza-Servicio Vasco de Salud."
         ],
         "correcta": 1
     },
@@ -799,7 +799,7 @@ const DEFAULT_QUESTIONS = [
             "Reducir el gasto farmacéutico mediante la unificación de compras.",
             "Favorecer la integración clínica de manera que la atención se articule en torno a la persona.",
             "Centralizar los servicios de atención primaria en las sedes hospitalarias.",
-            "Eliminar las categorías profesionales de atención primaria para unificarlas con las"
+            "Eliminar las categorías profesionales de atención primaria para unificarlas con las hospitalarias."
         ],
         "correcta": 1
     },
@@ -979,7 +979,7 @@ const DEFAULT_QUESTIONS = [
             "En relación a todas las acciones de carácter sanitario, incluyendo docencia, que se desarrollen en los centros, servicios o establecimientos sanitarios de titularidad pública o privada o concertados de Euskadi. Las acciones relativas a la investigación biomédica quedan fuera de esta Declaración y se rigen por su normativa específica.",
             "En relación a todas las acciones de carácter sanitario, incluyendo docencia, que se desarrollen en los centros, servicios o establecimientos sanitarios de titularidad pública o concertados que integran el sistema sanitario de Euskadi. Las acciones relativas a la investigación biomédica quedan fuera de esta Declaración y se rigen por su normativa específica.",
             "En relación a todas las acciones de carácter sanitario, incluyendo investigación y docencia, que se desarrollen en los centros, servicios o establecimientos sanitarios de titularidad pública o privada o concertados de Euskadi.",
-            "En relación a todas las acciones de carácter sanitario, incluyendo investigación y"
+            "En relación a todas las acciones de carácter sanitario, incluyendo investigación y docencia, que se desarrollen en los centros, servicios o establecimientos sanitarios de titularidad pública o concertados que integran el sistema sanitario de Euskadi."
         ],
         "correcta": 3
     },
@@ -1003,7 +1003,7 @@ const DEFAULT_QUESTIONS = [
             "1. Neonatología, infancia y adolescencia. 2. Salud sexual y reproductiva, embarazo y parto. 3. Salud laboral. 4. Personas mayores y final de la vida.",
             "1. Infancia y adolescencia. 2. Salud sexual y reproductiva. 3. Salud laboral. 4. Personas mayores.",
             "1. Infancia. 2. Adolescencia, salud sexual y reproductiva. 3. Personas mayores. 4. Final de la vida.",
-            "1. Infancia y adolescencia. 2. Salud sexual y reproductiva. 3. Personas mayores. 4."
+            "1. Infancia y adolescencia. 2. Salud sexual y reproductiva. 3. Personas mayores. 4. Final de la vida."
         ],
         "correcta": 3
     },
@@ -1027,7 +1027,7 @@ const DEFAULT_QUESTIONS = [
             "Debe dejar por escrito las decisiones cuando sea legalmente exigible o recomendable.",
             "Debe dejar por escrito las decisiones cuando se lo solicite el personal profesional que le atienda.",
             "Debe dejar por escrito las decisiones cuando la política del centro sanitario así lo establezca.",
-            "Debe dejar por escrito las decisiones cuando puedan tener relevancia a efectos de"
+            "Debe dejar por escrito las decisiones cuando puedan tener relevancia a efectos de responsabilidad legal."
         ],
         "correcta": 0
     },
@@ -1039,7 +1039,7 @@ const DEFAULT_QUESTIONS = [
             "Estarán disponibles en las Organizaciones de Servicios Sanitarios de Osakidetza- Servicio Vasco de Salud, los centros sanitarios concertados, los centros privados y el departamento competente en materia de sanidad.",
             "Estarán disponibles en las Organizaciones de Servicios Sanitarios de Osakidetza- Servicio Vasco de Salud, los centros sanitarios concertados y el departamento competente en materia de sanidad, pero no existe previsión en relación con los centros privados.",
             "Estarán disponibles en las Organizaciones de Servicios Sanitarios de Osakidetza- Servicio Vasco de Salud, pero no existe previsión en relación con los centros concertados, ni con los privados ni con el departamento competente en materia de sanidad.",
-            "Estarán disponibles en las Organizaciones de Servicios Sanitarios de Osakidetza-"
+            "Estarán disponibles en las Organizaciones de Servicios Sanitarios de Osakidetza- Servicio Vasco de Salud y en los centros sanitarios concertados y privados, pero no existe previsión en relación con el departamento competente en materia de sanidad."
         ],
         "correcta": 1
     },
@@ -1051,7 +1051,7 @@ const DEFAULT_QUESTIONS = [
             "Se resolverán atendiendo a las normas disciplinarias específicas previa apertura, en su caso, del expediente informativo correspondiente, sin perjuicio de las responsabilidades que de los hechos pudieran derivarse.",
             "Se resolverán atendiendo a las normas disciplinarias generales previa apertura, en su caso, del expediente informativo correspondiente, sin perjuicio de las responsabilidades que de los hechos pudieran derivarse.",
             "Se resolverán atendiendo a las normas disciplinarias específicas previa apertura, en su caso, del expediente informativo y de expediente de mediación, sin perjuicio de las responsabilidades que de los hechos pudieran derivarse.",
-            "Se resolverán atendiendo a las normas disciplinarias generales previa apertura, en"
+            "Se resolverán atendiendo a las normas disciplinarias generales previa apertura, en su caso, del expediente informativo y de expediente de mediación, sin perjuicio de las responsabilidades que de los hechos pudieran derivarse."
         ],
         "correcta": 0
     },
@@ -1063,7 +1063,7 @@ const DEFAULT_QUESTIONS = [
             "La información contenida en la historia clínica.",
             "El soporte de cualquier tipo o clase que contiene un conjunto de datos e informaciones de carácter asistencial y la documentación relativa a las voluntades anticipadas.",
             "El soporte de cualquier tipo o clase que contiene un conjunto de datos e informaciones de carácter asistencial y de investigación biomédica.",
-            "El soporte de cualquier tipo o clase que contiene un conjunto de datos e"
+            "El soporte de cualquier tipo o clase que contiene un conjunto de datos e informaciones de carácter asistencial."
         ],
         "correcta": 3
     },
@@ -1075,7 +1075,7 @@ const DEFAULT_QUESTIONS = [
             "Como regla general se proporcionará verbalmente.",
             "Como regla general se proporcionará por escrito.",
             "Como regla general se proporcionará verbalmente y por escrito.",
-            "Como regla general se proporcionará por escrito cuando se trate de pacientes"
+            "Como regla general se proporcionará por escrito cuando se trate de pacientes menores de edad."
         ],
         "correcta": 0
     },
@@ -1087,7 +1087,7 @@ const DEFAULT_QUESTIONS = [
             "La finalidad y la naturaleza de cada intervención.",
             "La finalidad y la naturaleza de cada intervención y sus riesgos.",
             "La finalidad y la naturaleza de cada intervención, sus riesgos y sus consecuencias.",
-            "La finalidad y la naturaleza de cada intervención, sus riesgos, sus consecuencias y"
+            "La finalidad y la naturaleza de cada intervención, sus riesgos, sus consecuencias y los derechos de las personas pacientes."
         ],
         "correcta": 2
     },
@@ -1111,7 +1111,7 @@ const DEFAULT_QUESTIONS = [
             "La persona paciente. También serán informadas las personas vinculadas a ella, por razones familiares o de hecho, en la medida que la persona paciente lo permita de manera expresa o tácita.",
             "La persona paciente. También serán informadas las personas vinculadas a ella, por razones familiares o de hecho, en la medida que la persona paciente lo permita de manera expresa.",
             "La persona paciente. También serán informadas las personas vinculadas a ella, por razones familiares o de hecho, en la medida que la persona paciente lo permita por escrito.",
-            "La persona paciente. También serán informadas las personas vinculadas a ella, por"
+            "La persona paciente. También serán informadas las personas vinculadas a ella, por razones familiares o de hecho."
         ],
         "correcta": 0
     },
@@ -1123,7 +1123,7 @@ const DEFAULT_QUESTIONS = [
             "El personal facultativo podrá llevar a cabo las intervenciones clínicas indispensables en favor de la salud de la persona paciente, con el consentimiento de sus familiares.",
             "El personal facultativo podrá llevar a cabo las intervenciones clínicas indispensables en favor de la salud de la persona paciente, con el consentimiento de quien ostente la representación legal.",
             "El personal facultativo podrá llevar a cabo las intervenciones clínicas indispensables en favor de la salud de la persona paciente, con autorización judicial.",
-            "El personal facultativo podrá llevar a cabo las intervenciones clínicas indispensables"
+            "El personal facultativo podrá llevar a cabo las intervenciones clínicas indispensables en favor de la salud de la persona paciente, sin necesidad de contar con su consentimiento."
         ],
         "correcta": 3
     },
@@ -1135,7 +1135,7 @@ const DEFAULT_QUESTIONS = [
             "Todos los riesgos en condiciones normales, conforme a la experiencia y al estado de la ciencia o directamente relacionados con el tipo de intervención.",
             "Todos los riesgos, siempre que sean graves, en condiciones normales, conforme a la experiencia y al estado de la ciencia o directamente relacionados con el tipo de intervención.",
             "Todos los riesgos probables en condiciones normales, conforme a la experiencia y al estado de la ciencia o directamente relacionados con el tipo de intervención.",
-            "Todos los riesgos, siempre que sean probables y graves, en condiciones normales,"
+            "Todos los riesgos, siempre que sean probables y graves, en condiciones normales, conforme a la experiencia y al estado de la ciencia o directamente relacionados con el tipo de intervención."
         ],
         "correcta": 2
     },
@@ -1147,7 +1147,7 @@ const DEFAULT_QUESTIONS = [
             "El personal facultativo, previa comprobación del informe clínico correspondiente, oirá a la persona paciente y, si persiste en su negativa, lo pondrá en conocimiento de la dirección del centro para que confirme o revoque la decisión.",
             "El personal facultativo, previa comprobación del informe clínico correspondiente, oirá a la persona paciente y, si persiste en su negativa, lo pondrá en conocimiento de la autoridad judicial para que confirme o revoque la decisión.",
             "La dirección del centro, previa comprobación del informe clínico correspondiente, oirá a la persona paciente y, si persiste en su negativa, lo pondrá en conocimiento de la autoridad judicial para que confirme o revoque la decisión.",
-            "La dirección del centro, previa comprobación del informe clínico correspondiente,"
+            "La dirección del centro, previa comprobación del informe clínico correspondiente, oirá a la persona paciente y, si persiste en su negativa, lo pondrá en conocimiento de la autoridad administrativa competente para que confirme o revoque la decisión."
         ],
         "correcta": 2
     },
@@ -1159,7 +1159,7 @@ const DEFAULT_QUESTIONS = [
             "Conocer la voluntad de la persona paciente en relación con la administración de sedación.",
             "Conocer la voluntad de la persona paciente en relación con la finalización de tratamientos de soporte vital.",
             "Ayudar a interpretar las instrucciones y servir de orientación para la toma de decisiones clínicas.",
-            "Documentar la actuación del personal profesional sanitario a efectos de"
+            "Documentar la actuación del personal profesional sanitario a efectos de responsabilidad legal en situaciones donde la persona paciente no puede expresar su voluntad por sí misma."
         ],
         "correcta": 2
     },
@@ -1171,7 +1171,7 @@ const DEFAULT_QUESTIONS = [
             "Se podrá designar una o varias personas representantes para que sean las interlocutoras válidas del personal facultativo o del equipo sanitario.",
             "Se podrá designar exclusivamente una persona representante para que sea la interlocutora válida del personal facultativo o del equipo sanitario.",
             "Se podrá designar una o varias personas representantes para que sean las interlocutoras válidas del personal facultativo o del equipo sanitario, si la persona paciente es menor de edad.",
-            "Se podrá designar una o varias personas representantes para que sean las"
+            "Se podrá designar una o varias personas representantes para que sean las interlocutoras válidas del personal facultativo o del equipo sanitario y facultarles para interpretar sus valores e instrucciones, si la persona paciente está incapacitada judicialmente."
         ],
         "correcta": 0
     },
@@ -1183,7 +1183,7 @@ const DEFAULT_QUESTIONS = [
             "Se extingue a partir, bien de la interposición de la demanda de nulidad, separación matrimonial o divorcio, bien de la extinción formalizada de la pareja de hecho o unión libre. Para el mantenimiento de la designación será necesario, en caso de nulidad, separación matrimonial o divorcio, que conste expresamente en la resolución judicial dictada al efecto.",
             "Se extingue a partir bien de la nulidad, separación matrimonial o divorcio, bien de la extinción formalizada de la pareja de hecho o unión libre. Para el mantenimiento de la designación será necesario, en caso de nulidad, separación matrimonial o divorcio, que conste expresamente en la resolución judicial dictada al efecto.",
             "Se extingue a partir, bien de la interposición de la demanda de nulidad, separación matrimonial o divorcio, bien de la extinción formalizada de la pareja de hecho o unión libre. Para el mantenimiento de la designación será necesario, en caso de nulidad, separación matrimonial o divorcio, que conste expresamente en el documento de instrucciones previas.",
-            "Se extingue bien a partir de la nulidad, separación matrimonial o divorcio, bien de"
+            "Se extingue bien a partir de la nulidad, separación matrimonial o divorcio, bien de la extinción formalizada de la pareja de hecho o unión libre. Para el mantenimiento de la designación será necesario, en caso de nulidad, separación matrimonial o divorcio, que conste expresamente en el documento de instrucciones previas."
         ],
         "correcta": 0
     },
@@ -1195,7 +1195,7 @@ const DEFAULT_QUESTIONS = [
             "A una enfermedad o lesión que la persona otorgante ya padece o a las que eventualmente podría padecer en un futuro.",
             "Exclusivamente a una enfermedad o lesión que la persona otorgante ya padece.",
             "Exclusivamente a una enfermedad o lesión que la persona otorgante eventualmente podría padecer en un futuro",
-            "Exclusivamente a una enfermedad o lesión que la persona otorgante eventualmente"
+            "Exclusivamente a una enfermedad o lesión que la persona otorgante eventualmente podría padecer en un futuro, siempre que sea de carácter grave."
         ],
         "correcta": 0
     },
@@ -1207,7 +1207,7 @@ const DEFAULT_QUESTIONS = [
             "Se formaliza por escrito y mediante uno de los siguientes procedimientos a elección de la persona que lo otorga: ante una notaría; ante la persona funcionaria o empleada pública encargada del Registro Vasco de Voluntades Anticipadas; o ante dos testigos.",
             "Se formaliza por escrito y mediante uno de los siguientes procedimientos a elección de la persona que lo otorga: ante una notaría; ante la persona funcionaria o empleada pública encargada del Registro Vasco de Voluntades Anticipadas; o ante tres testigos.",
             "Se formaliza por escrito y mediante uno de los siguientes procedimientos a elección de la persona que lo otorga: ante una notaría; ante la persona funcionaria o empleada pública encargada del Registro Vasco de Voluntades Anticipadas o del servicio de documentación de un centro sanitario de la Comunidad Autónoma del País Vasco; o ante dos testigos.",
-            "Se formaliza por escrito y mediante uno de los siguientes procedimientos a elección"
+            "Se formaliza por escrito y mediante uno de los siguientes procedimientos a elección de la persona que lo otorga: ante una notaría; ante la persona funcionaria o empleada pública encargada del Registro Vasco de Voluntades Anticipadas o del servicio de documentación de un centro sanitario de la Comunidad Autónoma del País Vasco; o ante tres testigos."
         ],
         "correcta": 1
     },
@@ -1231,7 +1231,7 @@ const DEFAULT_QUESTIONS = [
             "La persona otorgante conserve su capacidad y su libertad de actuación.",
             "La persona otorgante conserve su capacidad, su libertad de actuación y la posibilidad de expresarse.",
             "La persona otorgante conserve su capacidad, su libertad de actuación y la posibilidad de expresarse de manera inequívoca.",
-            "La persona otorgante conserve su capacidad, su libertad de actuación y la"
+            "La persona otorgante conserve su capacidad, su libertad de actuación y la posibilidad de expresarse de manera inequívoca o a través de la persona interlocutora designada al efecto."
         ],
         "correcta": 1
     },
@@ -1243,7 +1243,7 @@ const DEFAULT_QUESTIONS = [
             "Las instrucciones que en el momento de ser aplicadas resulten contrarias al ordenamiento jurídico.",
             "Las instrucciones que en el momento de ser otorgadas resulten contrarias al ordenamiento jurídico.",
             "Las respuestas a) y b) son correctas.",
-            "Las instrucciones que en el momento de ser aplicadas no se aprueben por el comité"
+            "Las instrucciones que en el momento de ser aplicadas no se aprueben por el comité de ética del centro."
         ],
         "correcta": 0
     },
@@ -1255,7 +1255,7 @@ const DEFAULT_QUESTIONS = [
             "Las personas vinculadas a la persona fallecida por razones familiares o de hecho así como quienes ostenten la condición de herederas, en todo caso.",
             "Solo las personas vinculadas a la persona fallecida por razones familiares siempre que lo hubiera autorizado expresamente la persona fallecida.",
             "Las personas vinculadas a la persona fallecida por razones familiares o de hecho así como quienes ostenten la condición de herederas, salvo que la persona fallecida lo hubiese prohibido expresamente.",
-            "En caso de que la persona fallecida fuera menor de edad, el acceso podrá ejercerse"
+            "En caso de que la persona fallecida fuera menor de edad, el acceso podrá ejercerse también por sus representantes legales o por el Ministerio Fiscal que siempre actuará de oficio."
         ],
         "correcta": 2
     },
@@ -1279,7 +1279,7 @@ const DEFAULT_QUESTIONS = [
             "Únicamente podrá fundarse en su consentimiento cuando sea mayor de dieciséis años.",
             "La Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales no prevé que las personas menores de edad puedan dar su consentimiento válidamente a estos efectos.",
             "Únicamente podrá fundarse en su consentimiento cuando sea mayor de catorce años.",
-            "El tratamiento de los datos de las personas menores de dieciséis años, fundado en el"
+            "El tratamiento de los datos de las personas menores de dieciséis años, fundado en el consentimiento, solo será lícito si consta el consentimiento de quienes ejercen la patria potestad o tutela, con el alcance que dichas personas determinen."
         ],
         "correcta": 2
     },
@@ -1303,7 +1303,7 @@ const DEFAULT_QUESTIONS = [
             "Solo por profesionales de la abogacía y cuando tengan por objeto recoger la información facilitada por quienes les contraten para el ejercicio de sus funciones.",
             "Por profesionales de la abogacía y de la procura, cuando tengan por objeto recoger la información facilitada por quienes les contraten para el ejercicio de sus funciones.",
             "En los casos previstos por la propia Ley Orgánica 3/2018 y en otras normas de rango reglamentario.",
-            "Exclusivamente en los supuestos amparados en una norma de Derecho de la Unión"
+            "Exclusivamente en los supuestos amparados en una norma de Derecho de la Unión y en la propia Ley Orgánica 2/2018."
         ],
         "correcta": 1
     },
@@ -1315,7 +1315,7 @@ const DEFAULT_QUESTIONS = [
             "La persona afectada deberá indicar en su solicitud a qué datos se refiere y deberá acompañar, en todo caso, la documentación justificativa de la inexactitud de los datos.",
             "La persona afectada deberá indicar en su solicitud a qué datos se refiere y la corrección que haya de realizarse, y cuando sea preciso, deberá acompañar la documentación justificativa de la inexactitud o carácter incompleto de los datos objeto de tratamiento.",
             "La persona afectada deberá indicar en su solicitud solo la corrección que haya de realizarse y debe siempre acompañar la documentación justificativa de la inexactitud de los datos.",
-            "No es necesario que la persona afectada indique expresamente en su solicitud qué"
+            "No es necesario que la persona afectada indique expresamente en su solicitud qué datos deben rectificarse."
         ],
         "correcta": 1
     },
@@ -1327,7 +1327,7 @@ const DEFAULT_QUESTIONS = [
             "Solo las personas físicas podrán llevar a cabo el tratamiento de imágenes a través de sistemas de cámaras o videocámaras con la finalidad de preservar la seguridad de las personas y bienes, así como sus instalaciones.",
             "Los datos serán suprimidos, en todo caso, en el plazo máximo de un mes desde su captación.",
             "Los datos serán suprimidos en el plazo máximo de un mes desde su captación, salvo cuando hubieran de ser conservados para acreditar la comisión de actos que atenten contra la integridad de personas, bienes o instalaciones.",
-            "En el caso de que los datos hubieran de ser conservados más allá del plazo de un"
+            "En el caso de que los datos hubieran de ser conservados más allá del plazo de un mes desde su captación para acreditar la comisión de actos que atenten contra la integridad de personas, bienes o instalaciones, deberán ser puestas a disposición de la autoridad competente en un plazo máximo de cuarenta y ocho horas desde que se tuviera conocimiento de la existencia de la grabación."
         ],
         "correcta": 2
     },
@@ -1339,7 +1339,7 @@ const DEFAULT_QUESTIONS = [
             "En todo caso, transcurridos tres meses desde la introducción de los datos, deberá procederse a su supresión del sistema de denuncias, salvo que la finalidad de la conservación sea dejar evidencia del funcionamiento del modelo de prevención de la comisión de delitos.",
             "En todo caso, transcurridos seis meses desde la introducción de los datos, deberá procederse a su supresión del sistema de denuncias, salvo que la finalidad de la conservación sea dejar evidencia del funcionamiento del modelo de prevención de la comisión de delitos.",
             "En todo caso, y sin excepción, transcurridos seis meses desde la introducción de los datos, deberá procederse a su supresión del sistema de denuncias.",
-            "La Ley no prevé plazo temporal alguno para la supresión de los datos del sistema"
+            "La Ley no prevé plazo temporal alguno para la supresión de los datos del sistema de denuncias."
         ],
         "correcta": 0
     },
@@ -1459,7 +1459,7 @@ const DEFAULT_QUESTIONS = [
             "Convertirnos en el sistema de salud pública más sólido y resiliente de Europa.",
             "Liderar una Euskadi más saludable.",
             "Reducir la morbimortalidad evitable y disminuir las desigualdades en salud antes de 2030.",
-            "Lograr la sostenibilidad y excelencia en los sistemas asistenciales sanitarios y"
+            "Lograr la sostenibilidad y excelencia en los sistemas asistenciales sanitarios y sociosanitarios."
         ],
         "correcta": 1
     },
@@ -1555,7 +1555,7 @@ const DEFAULT_QUESTIONS = [
             "Construcción de viviendas de protección oficial exclusivamente rurales.",
             "Soluciones habitacionales asequibles, accesibles y adaptadas al ciclo vital.",
             "Ayudas directas al alquiler únicamente para personas menores de 30 años",
-            "Fomento de grandes centros residenciales para todas las personas con enfermedades"
+            "Fomento de grandes centros residenciales para todas las personas con enfermedades crónicas."
         ],
         "correcta": 1
     },
@@ -1735,7 +1735,7 @@ const DEFAULT_QUESTIONS = [
             "Cinco Líneas Estratégicas. prevención y promoción de la salud; atención a la enfermedad; calidad, innovación y sostenibilidad; desarrollo de las y los profesionales; y Gobernanza.",
             "Seis Líneas Estratégicas: prevención y promoción de la salud; atención a la enfermedad; áreas prioritarias de salud; calidad, innovación y sostenibilidad; desarrollo de las y los profesionales; y transparencia y participación ciudadana.",
             "Seis Líneas Estratégicas: prevención y promoción de la salud; atención a la enfermedad; áreas prioritarias de salud; calidad, innovación y sostenibilidad; desarrollo de las y los profesionales; y gobernanza.",
-            "Seis Líneas Estratégicas: prevención y promoción de la salud; atención"
+            "Seis Líneas Estratégicas: prevención y promoción de la salud; atención sociosanitaria; áreas prioritarias de salud; calidad, innovación y sostenibilidad; desarrollo de las y los profesionales; y gobernanza."
         ],
         "correcta": 2
     },
@@ -1867,7 +1867,7 @@ const DEFAULT_QUESTIONS = [
             "Garantizar la continuidad de las líneas de acción y proyectos previamente implantados.",
             "Impulsar la cultura de seguridad de paciente en las organizaciones de servicios de Osakidetza, promoviendo la formación y sensibilización como aspectos clave.",
             "Optimizar la prescripción de pruebas diagnósticas que utilizan radiación ionizante.",
-            "Implantar un sistema de identificación inequívoca de pacientes en todas las fases"
+            "Implantar un sistema de identificación inequívoca de pacientes en todas las fases del proceso asistencial."
         ],
         "correcta": 1
     },
@@ -1915,7 +1915,7 @@ const DEFAULT_QUESTIONS = [
             "L5. Conciliación de la medicación.",
             "L14. Buenas prácticas asociadas a la utilización de medicación.",
             "L6. Optimización en la prescripción de pruebas diagnósticas que utilizan radiación ionizante.",
-            "L7. Seguridad transfusional (Nota: la seguridad transfusional se considera una línea"
+            "L7. Seguridad transfusional (Nota: la seguridad transfusional se considera una línea separada, aunque implica la administración de productos sanguíneos)."
         ],
         "correcta": 2
     },
@@ -1939,7 +1939,7 @@ const DEFAULT_QUESTIONS = [
             "Reducir la brecha de género en investigación en un 4%.",
             "Conseguir que todas las personas trabajadoras de Osakidetza conozcan el Plan y el Protocolo de Acoso.",
             "Reducir a la mitad las categorías con brecha retributiva superior al 5%.",
-            "Garantizar la formación básica, progresiva, permanente y obligatoria de todo el"
+            "Garantizar la formación básica, progresiva, permanente y obligatoria de todo el personal de Osakidetza."
         ],
         "correcta": 3
     },
@@ -1975,7 +1975,7 @@ const DEFAULT_QUESTIONS = [
             "Reducir el porcentaje de hombres en puestos de dirección.",
             "Reducir a la mitad la brecha de género en investigación.",
             "Reducir, al menos, en un 2% la brecha de género existente en las medidas de conciliación para cuidados.",
-            "Aumentar el número de investigaciones con perspectiva de género interseccional en"
+            "Aumentar el número de investigaciones con perspectiva de género interseccional en un 4%."
         ],
         "correcta": 2
     },
@@ -1987,7 +1987,7 @@ const DEFAULT_QUESTIONS = [
             "Consolidar los avances logrados y profundizar el proceso transformador.",
             "Establecer unos cimientos sólidos para garantizar el cumplimiento de la legislación y la alineación a los marcos estratégicos.",
             "Reducir la brecha salarial a la mitad en todas las categorías profesionales.",
-            "Lograr la aprobación por parte del Consejo de Dirección de Osakidetza en julio de"
+            "Lograr la aprobación por parte del Consejo de Dirección de Osakidetza en julio de 2025."
         ],
         "correcta": 1
     },
@@ -2011,7 +2011,7 @@ const DEFAULT_QUESTIONS = [
             "El refuerzo de la prevención, la detección precoz y la mejora de la respuesta asistencial integrada desde el sistema de salud.",
             "La derivación inmediata de cualquier caso detectado a servicios jurídicos externos, sin intervención del personal sanitario.",
             "La creación de un registro anónimo donde las personas profesionales puedan denunciar conductas sin seguimiento posterior.",
-            "La limitación de la atención asistencial únicamente a las consecuencias físicas"
+            "La limitación de la atención asistencial únicamente a las consecuencias físicas derivadas de la violencia."
         ],
         "correcta": 0
     },
@@ -2035,7 +2035,7 @@ const DEFAULT_QUESTIONS = [
             "Por aplicación de la Ley Orgánica de Protección de Datos Personales y garantía de los derechos digitales no puede constar en los datos personales de cada paciente de Osakidetza su idioma de preferencia para las comunicaciones con Osakidetza.",
             "El signo azul con la letra e indica que la persona paciente no tiene competencia para comunicarse en un idioma que no sea el euskera para las comunicaciones orales con Osakidetza.",
             "En los datos personales de cada paciente, se registrará su idioma de preferencia para las comunicaciones orales con Osakidetza .",
-            "A las personas que elijan el euskera como lengua prioritaria en sus comunicaciones"
+            "A las personas que elijan el euskera como lengua prioritaria en sus comunicaciones con Osakidetza solo se les deberá ofrecer servicios en euskera."
         ],
         "correcta": 2
     },
@@ -2047,7 +2047,7 @@ const DEFAULT_QUESTIONS = [
             "“Aukeratu zeure hizkuntza/Elige tu lengua” es el lema de la campaña de activación del registro de la lengua preferente de cada paciente llevada a cabo en 2017.",
             "Se atribuye a todas las direcciones y gerencias de Osakidetza la responsabilidad de realizar la campaña con el lema “Aukeratu zeure hizkuntza/Elige tu lengua”.",
             "“Aukeratu zeure hizkuntza/Elige tu lengua” es el lema de la campaña de activación del registro de la lengua preferente de cada paciente que realizará Osakidetza durante el primer año de planificación.",
-            "“Aukeratu zeure hizkuntza/Elige tu lengua” es el lema de la campaña de activación"
+            "“Aukeratu zeure hizkuntza/Elige tu lengua” es el lema de la campaña de activación del registro de la lengua preferente de cada paciente que realizará Osakidetza durante el tercer año de planificación."
         ],
         "correcta": 0
     },
@@ -2071,7 +2071,7 @@ const DEFAULT_QUESTIONS = [
             "La lengua utilizada por cada ciudadano o ciudadana.",
             "Siempre el euskera como lengua preferente.",
             "Siempre las dos lenguas oficiales independientemente de la lengua utilizada por cada ciudadano o ciudadana.",
-            "Ambas lenguas oficiales, siendo los escritos contestados primero en euskera y luego"
+            "Ambas lenguas oficiales, siendo los escritos contestados primero en euskera y luego en castellano."
         ],
         "correcta": 0
     },
@@ -2083,7 +2083,7 @@ const DEFAULT_QUESTIONS = [
             "Se pondrá a disposición del personal bilingüe que lo desee diferentes elementos identificativos portadores del circulo azul con la letra e, signo que invita a relacionarse en euskera.",
             "El signo azul y la letra e solo se utilizará para la identificación individual del personal bilingüe.",
             "En los centros de salud, consultorios y unidades hospitalarias, deberá estar colocado, de modo visible, el cartel que explica a las personas usuarias el significado del signo identificativo con la letra e.",
-            "Se estudiará introducir una variante del círculo azul con la letra e para el personal"
+            "Se estudiará introducir una variante del círculo azul con la letra e para el personal dispuesto a que le hablen en euskera pero que muestra dificultades para expresarse en ciertas situaciones."
         ],
         "correcta": 1
     },
@@ -2107,7 +2107,7 @@ const DEFAULT_QUESTIONS = [
             "En los casos de los mensajes SMS que se envían a los teléfonos móviles de personas trabajadoras o candidatas, estarán escritos en las dos lenguas oficiales, primero en castellano y luego en euskera.",
             "Los escritos individualizados de respuesta a solicitudes y reclamaciones de las personas trabajadoras deberán redactarse en las dos lenguas oficiales.",
             "Osakidetza ha de garantizar que la información y los servicios ofrecidos tanto al personal empleado como a personas candidatas a través de las tecnologías de la comunicación estén en las dos lenguas oficiales, con el fin de que cada persona haga uso de la lengua de su preferencia.",
-            "Las informaciones y comunicaciones no personalizadas dirigidas al personal"
+            "Las informaciones y comunicaciones no personalizadas dirigidas al personal deberán redactarse en las dos lenguas oficiales y se dará prioridad al castellano."
         ],
         "correcta": 2
     },
@@ -2227,7 +2227,7 @@ const DEFAULT_QUESTIONS = [
             "Tener la ciudadanía española con residencia legal ininterrumpida de al menos 10 años.",
             "Tener la nacionalidad española o tener residencia legal en España de al menos 5 años.",
             "Ser mayor de edad y tener la nacionalidad española, residencia legal o certificado de empadronamiento que acredite un tiempo de permanencia superior a 12 meses en territorio español.",
-            "Tener la nacionalidad española y residencia en el mismo municipio durante los"
+            "Tener la nacionalidad española y residencia en el mismo municipio durante los últimos 2 años."
         ],
         "correcta": 2
     },
@@ -2287,7 +2287,7 @@ const DEFAULT_QUESTIONS = [
             "Aquel que implica la existencia de sufrimiento físico o psíquico constante.",
             "Aquel que genera una limitación que incide directamente sobre la autonomía física y capacidad de expresar su voluntad de la persona paciente.",
             "La dependencia de otra persona para la realización de al menos dos actividades básicas de la vida diaria.",
-            "Una dolencia que ha sido declarada irreversible y con un pronóstico de vida inferior"
+            "Una dolencia que ha sido declarada irreversible y con un pronóstico de vida inferior a seis meses."
         ],
         "correcta": 0
     },

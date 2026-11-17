@@ -138,10 +138,41 @@ async function boot() {
     if (pregCount === 0 && typeof DEFAULT_QUESTIONS !== 'undefined' && DEFAULT_QUESTIONS.length > 0) {
         await db.preguntas.bulkPut(DEFAULT_QUESTIONS);
     }
+    await syncQuestionTexts();
     if (typeof applySpecificAnswers === 'function') await applySpecificAnswers();
     await refreshHome();
     await showAppVersion();
     initServiceWorker();
+}
+
+// Completa en la BD local los textos que quedaron cortados en importaciones
+// anteriores, tomando como referencia el banco por defecto (temario + número).
+// Solo actualiza un texto si el local es el principio del de referencia, así
+// que no pisa ediciones hechas a mano. No toca id, respuesta, dudosa ni
+// estadísticas, por lo que el progreso (incluido el Sprint) se conserva.
+async function syncQuestionTexts() {
+    if (typeof DEFAULT_QUESTIONS === 'undefined') return;
+    const ref = new Map(DEFAULT_QUESTIONS.map(q => [`${q.temario}|${q.numero_temario}`, q]));
+    const completa = (local, oficial) =>
+        typeof local === 'string' && typeof oficial === 'string' &&
+        local !== oficial && oficial.startsWith(local.trimEnd());
+
+    const cambios = [];
+    for (const q of await db.preguntas.toArray()) {
+        const r = ref.get(`${q.temario}|${q.numero_temario}`);
+        if (!r) continue;
+        const changes = {};
+        if (completa(q.pregunta, r.pregunta)) changes.pregunta = r.pregunta;
+        if (Array.isArray(q.opciones) && Array.isArray(r.opciones) &&
+            q.opciones.some((o, i) => completa(o, r.opciones[i]))) {
+            changes.opciones = q.opciones.map((o, i) => completa(o, r.opciones[i]) ? r.opciones[i] : o);
+        }
+        if (Object.keys(changes).length) cambios.push({ key: q.id, changes });
+    }
+    if (cambios.length) {
+        await db.preguntas.bulkUpdate(cambios);
+        log(`Textos completados: ${cambios.length} preguntas`);
+    }
 }
 
 // ═══════════════════════════════════════

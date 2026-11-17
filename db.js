@@ -27,6 +27,14 @@ db.version(3).stores({
     stats: 'id'
 });
 
+// VERSION 4: Modo Sprint (estado propio, independiente del modo inteligente)
+db.version(4).stores({
+    preguntas: '++id, temario, numero_temario, dudosa',
+    stats:     'id',
+    sprint:    'id, estado',
+    sprintCfg: 'key'
+});
+
 db.open()
     .catch('UpgradeError', async () => {
         console.error('DB: esquema incompatible — reiniciando...');

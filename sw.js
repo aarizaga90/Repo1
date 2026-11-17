@@ -1,4 +1,4 @@
-const CACHE_NAME = 'opos-v7';
+const CACHE_NAME = 'opos-v8';
 
 const ASSETS = [
     './',
@@ -9,6 +9,7 @@ const ASSETS = [
     './preguntas.js',
     './respuestas-especifico.js',
     './script.js',
+    './sprint.js',
     './admin.js',
     './dexie.js',
     './icons/icon-180.png',

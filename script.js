@@ -49,8 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mode && target) selectModeSecure(btn, mode, target);
     });
 
-    const defaultBtn = document.querySelector('.mode-btn[data-mode="all"]');
-    if (defaultBtn) selectModeSecure(defaultBtn, 'all', 'top');
+    const defaultBtn = document.querySelector('.mode-btn[data-mode="sprint"]')
+        || document.querySelector('.mode-btn[data-mode="all"]');
+    if (defaultBtn) selectModeSecure(defaultBtn, defaultBtn.dataset.mode, 'top');
 
     // ── Home ──────────────────────────────────────────
     document.getElementById('start-btn')
@@ -185,6 +186,10 @@ async function selectModeSecure(el, mode, target) {
         </div>`;
 
     const configs = {
+        sprint: {
+            desc: 'Plan diario hasta el examen: todas las preguntas vistas, falladas fijadas y repasos encajados antes de la fecha.',
+            html: `<div id="sprint-panel" class="sprint-panel"><p class="sprint-cargando">Calculando plan…</p></div>`
+        },
         all: {
             desc: 'Estudio secuencial por rango.',
             html: `<div style="display:flex; flex-wrap:wrap; gap:15px; align-items:flex-end;">${temarioSelectorHTML}${rangeHTML}</div>`
@@ -239,6 +244,9 @@ async function selectModeSecure(el, mode, target) {
         </div>`;
 
     requestAnimationFrame(() => activePanel.classList.add('active'));
+    if (mode === 'sprint' && typeof renderSprintPanel === 'function') {
+        renderSprintPanel(activePanel);
+    }
     if (mode === 'dudosas') {
         db.preguntas.where('dudosa').equals(1).count().then(n => {
             const el = activePanel.querySelector('#dudosas-panel-info');
@@ -293,6 +301,7 @@ async function refreshHome() {
     actionsEl.style.display = total === 0 ? 'none'  : 'block';
 
     loadDudasCount();
+    if (typeof sprintActualizarBoton === 'function') sprintActualizarBoton();
 }
 
 function getQuestionCode(q) {
@@ -342,6 +351,7 @@ async function startStudy() {
     };
     answered = false;
 
+    if (selectedMode === 'sprint') return startSprintSession();
     if (selectedMode === 'smart') return startSmartSession();
     if (selectedMode === 'dudosas') return startDudosasSession();
     if (selectedMode === 'exam')  return startExamSession();
@@ -540,12 +550,21 @@ function renderCurrentQuestion() {
     const idx       = session.index;
     const isSmart   = session.mode === 'smart';
     const isExam    = session.mode === 'exam';
-    const total     = isSmart ? SMART_SESSION_LENGTH : session.queue.length;
+    const isSprint  = session.mode === 'sprint';
+    const total     = isSmart ? SMART_SESSION_LENGTH
+                    : isSprint ? Math.max(session.sprint.goal, idx + 1)
+                    : session.queue.length;
     const esInfinito = total === Infinity;
     const code      = getQuestionCode(q);
 
     renderCaso(q);
     hideSugerencia();
+
+    const qNum = document.getElementById('q-num');
+    if (qNum) {
+        qNum.textContent   = isSprint ? sprintEtiqueta(session.sprint.origen) : '';
+        qNum.style.display = isSprint ? 'block' : 'none';
+    }
 
     document.getElementById('q-text').textContent      = q.pregunta || q.texto || '';
     document.getElementById('prog-current').textContent = code;
@@ -898,7 +917,12 @@ async function selectAnswer(chosen) {
     }
 
     try {
-        await recordAnswer(q.id, isCorrect);
+        if (session.mode === 'sprint') {
+            await sprintRegistrar(q, isCorrect);
+            session.nextBuffer = await sprintSiguiente();
+        } else {
+            await recordAnswer(q.id, isCorrect);
+        }
     } catch (e) {
         console.error('Error guardando respuesta:', e);
     }
@@ -909,13 +933,26 @@ async function selectAnswer(chosen) {
 
     showSugerencia(q);
 
-    const isLast = session.mode === 'smart'
-        ? session.index + 1 >= SMART_SESSION_LENGTH
-        : session.index >= session.queue.length - 1;
+    const isLast = session.mode === 'sprint'
+        ? !session.nextBuffer
+        : session.mode === 'smart'
+            ? session.index + 1 >= SMART_SESSION_LENGTH
+            : session.index >= session.queue.length - 1;
     document.getElementById('next-btn').textContent = isLast ? 'Ver resultados ✓' : 'Siguiente →';
 }
 
 async function nextQuestion() {
+    if (session.mode === 'sprint') {
+        const sig = session.nextBuffer;
+        session.nextBuffer = null;
+        if (!sig?.q) { showResults(); return; }
+        session.index++;
+        session.currentQuestion = sig.q;
+        session.sprint.origen   = sig.origen;
+        session.lastId          = sig.q.id;
+        renderCurrentQuestion();
+        return;
+    }
     if (session.mode === 'smart') {
         session.index++;
         if (session.index >= SMART_SESSION_LENGTH) { showResults(); return; }
@@ -1188,6 +1225,18 @@ function showResults() {
 
     const reviewBtn = document.getElementById('review-btn');
     if (reviewBtn) reviewBtn.style.display = session.wrongAnswers?.length > 0 ? 'block' : 'none';
+
+    const retryBtn = document.getElementById('retry-btn');
+    if (retryBtn) retryBtn.textContent = session.mode === 'sprint' ? 'Seguir con el sprint' : 'Repetir sesión';
+
+    if (session.mode === 'sprint') {
+        homeDirty = true;
+        sprintResultado().then(r => {
+            document.getElementById('res-emoji').textContent = r.emoji;
+            document.getElementById('res-title').textContent = r.title;
+            document.getElementById('res-sub').textContent   = `${total} respondidas en esta sesión · ${r.sub}`;
+        });
+    }
 
     if (session.mode === 'smart') {
         downloadSmartLog();

@@ -32,6 +32,7 @@
     <script src="preguntas.js" defer></script>
     <script src="respuestas-especifico.js" defer></script>
     <script src="script.js" defer></script>
+    <script src="sprint.js" defer></script>
     <script src="admin.js" defer></script>
 </head>
 <body>
@@ -77,6 +78,14 @@
         </div>
 
         <div id="home-actions">
+            <button type="button" class="mode-btn big sprint-btn" data-mode="sprint" data-target="top">
+                <span class="mode-icon">🎯</span>
+                <span class="sprint-btn-text">
+                    <span class="mode-label">Sprint al examen</span>
+                    <span class="mode-sub" id="sprint-sub">Plan diario hasta el examen</span>
+                </span>
+            </button>
+
             <div class="main-modes-grid">
                 <button type="button" class="mode-btn big" data-mode="exam" data-target="top">
                     <span class="mode-icon">⏱️</span>

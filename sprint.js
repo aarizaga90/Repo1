@@ -8,7 +8,8 @@
 //     sesión). Después se repasa al día siguiente.
 //   · Repasos comprimidos al plazo: +3 días si salió a la primera;
 //     +1 y +3 días si costó. Nunca se programan después de la víspera.
-//   · Consolidación: los 2 últimos días solo frágiles (falladas alguna vez,
+//   · Consolidación: los 2 últimos días —o antes, en cuanto se hayan visto
+//     todas— solo frágiles (falladas alguna vez,
 //     no dominadas o marcadas como duda), las más falladas primero.
 //   · Nunca se programa nada para el día del examen.
 //
@@ -101,8 +102,16 @@ function sprintConstruirOrden(preguntas) {
 function sprintFase(cfg, hoy) {
     const faltan = sprintDiferencia(hoy, cfg.examen);
     if (faltan <= 0) return { fase: 'examen', faltan };
+    if (cfg.inicioConsolida && hoy >= cfg.inicioConsolida) return { fase: 'consolidacion', faltan };
     if (faltan <= SPRINT_DIAS_CONSOLIDA) return { fase: 'consolidacion', faltan };
     return { fase: 'cobertura', faltan };
+}
+
+// Día en que empezó (o empieza) la consolidación: antes de tiempo si ya se
+// vieron todas, o los últimos días antes del examen.
+function sprintInicioFase(cfg) {
+    const porFecha = sprintSumarDias(cfg.examen, -SPRINT_DIAS_CONSOLIDA);
+    return cfg.inicioConsolida && cfg.inicioConsolida < porFecha ? cfg.inicioConsolida : porFecha;
 }
 
 // Frágil = aún no dominada, fallada 2+ veces o marcada como duda.
@@ -112,7 +121,7 @@ function sprintEsFragil(st, q) {
 
 // Frágiles que aún no se han repasado en la fase de consolidación.
 function sprintFragilesPendientes(cfg, estados, preguntas) {
-    const inicioFase = sprintSumarDias(cfg.examen, -SPRINT_DIAS_CONSOLIDA);
+    const inicioFase = sprintInicioFase(cfg);
     return [...estados.values()]
         .filter(st => st.estado !== 'aprendiendo' &&
             sprintEsFragil(st, preguntas.get(st.id)) &&
@@ -120,16 +129,34 @@ function sprintFragilesPendientes(cfg, estados, preguntas) {
         .sort((a, b) => (b.fallos || 0) - (a.fallos || 0));
 }
 
+// Lo que se puede repasar en fase 2: primero frágiles pendientes; después,
+// para «Repasar 20 más», las que hace más tiempo que no se ven (no las de hoy).
+function sprintPoolConsolida(cfg, estados, preguntas, hoy) {
+    const fragiles = sprintFragilesPendientes(cfg, estados, preguntas);
+    const ya = new Set(fragiles.map(st => st.id));
+    const resto = [...estados.values()]
+        .filter(st => !ya.has(st.id) && st.estado !== 'aprendiendo' && st.ultimoDia !== hoy)
+        .sort((a, b) => (a.ultimoDia || '').localeCompare(b.ultimoDia || ''));
+    return fragiles.concat(resto);
+}
+
 // Calcula (una vez al día) la cuota de nuevas y de consolidación.
 async function sprintPrepararDia() {
     const cfg  = await sprintCargarCfg();
     const hoy  = sprintDia();
-    if (cfg.hoy?.dia === hoy && cfg.hoy.totalOrden === cfg.orden.length) return cfg;
+    const todasVistas = (await db.sprint.count()) >= cfg.orden.length;
+    if (cfg.hoy?.dia === hoy && cfg.hoy.totalOrden === cfg.orden.length &&
+        !(cfg.hoy.fase === 'cobertura' && todasVistas)) return cfg;
     const previo = cfg.hoy?.dia === hoy ? cfg.hoy : null; // recálculo a mitad de día
 
-    const { fase, faltan } = sprintFase(cfg, hoy);
     const estados = new Map((await db.sprint.toArray()).map(s => [s.id, s]));
     const sinVer  = cfg.orden.filter(id => !estados.has(id)).length;
+
+    // Si ya no queda nada por ver, la fase 2 empieza ya (aunque sea a mitad de día)
+    if (sinVer === 0 && !cfg.inicioConsolida && sprintFase(cfg, hoy).fase === 'cobertura') {
+        cfg.inicioConsolida = hoy;
+    }
+    const { fase, faltan } = sprintFase(cfg, hoy);
 
     let cuotaNuevas = 0;
     if (fase === 'cobertura') {
@@ -147,7 +174,10 @@ async function sprintPrepararDia() {
     }
 
     let cuotaConsolida = 0;
-    if (fase === 'consolidacion') {
+    // Si la fase 2 empieza a mitad de día, hoy no se impone cuota: el día ya
+    // estaba lleno. Queda disponible «Repasar 20 más» y la cuota empieza mañana.
+    const empiezaAhora = previo?.fase === 'cobertura' && fase === 'consolidacion';
+    if (fase === 'consolidacion' && !empiezaAhora) {
         const preguntas  = new Map((await db.preguntas.toArray()).map(q => [q.id, q]));
         const pendientes = sprintFragilesPendientes(cfg, estados, preguntas).length;
         cuotaConsolida = Math.ceil(pendientes / Math.max(1, faltan));
@@ -180,10 +210,11 @@ async function sprintResumen() {
     const aprendiendo = estados.filter(s => s.estado === 'aprendiendo').length;
     const repasosHoy = estados.filter(s => s.estado === 'repaso' && s.due && s.due <= hoy).length;
     const atrasados  = estados.filter(s => s.estado === 'repaso' && s.due && s.due < hoy).length;
-    const nuevasHoy  = Math.max(0, cfg.hoy.cuotaNuevas - cfg.hoy.nuevasHechas);
+    const sinVerAhora = Math.max(0, cfg.orden.length - estados.length);
+    const nuevasHoy  = Math.min(sinVerAhora, Math.max(0, cfg.hoy.cuotaNuevas - cfg.hoy.nuevasHechas));
     const consolidaHoy = fase === 'consolidacion'
         ? Math.min(Math.max(0, cfg.hoy.cuotaConsolida - cfg.hoy.consolidadasHechas),
-                   sprintFragilesPendientes(cfg, new Map(estados.map(s => [s.id, s])), preguntas).length)
+                   sprintPoolConsolida(cfg, new Map(estados.map(s => [s.id, s])), preguntas, hoy).length)
         : 0;
     const pendientesHoy = repasosHoy + aprendiendo + nuevasHoy + consolidaHoy;
 
@@ -240,7 +271,7 @@ async function renderSprintPanel(panel) {
     }
 
     const consejo = r.fase === 'consolidacion'
-        ? '<p class="sprint-tip">💡 Hoy, además, haz un simulacro en modo ⏱️ Examen.</p>'
+        ? '<p class="sprint-tip">💡 Buen momento para un simulacro en modo ⏱️ Examen.</p>'
         : '';
 
     cont.innerHTML = `
@@ -307,8 +338,9 @@ async function startSprintSession(adelantar = false) {
     const cfg = await sprintPrepararDia();
     const { fase } = sprintFase(cfg, sprintDia());
 
-    if (adelantar) {
-        cfg.hoy.cuotaNuevas += 20;
+    if (adelantar && fase !== 'examen') {
+        if (fase === 'consolidacion') cfg.hoy.cuotaConsolida += 20;
+        else cfg.hoy.cuotaNuevas += 20;
         await db.sprintCfg.put(cfg);
     }
 
@@ -336,7 +368,13 @@ async function startSprintSession(adelantar = false) {
     if (!first) {
         const r = await sprintResumen();
         if (fase === 'examen') { showToast('Hoy es el examen. ¡Mucha suerte! 🎓'); return; }
-        if (r.vistas < r.total) {
+        if (r.fase === 'consolidacion') {
+            showModal('✅ Cuota de hoy completada.\n\n¿Repasar 20 más? Primero frágiles; si no quedan, las que hace más tiempo que no ves.', {
+                confirmText: 'Repasar 20',
+                cancelText:  'Hoy no',
+                onConfirm:   () => startSprintSession(true)
+            });
+        } else if (r.vistas < r.total) {
             showModal('✅ Cuota de hoy completada.\n\n¿Quieres adelantar 20 preguntas nuevas de mañana?', {
                 confirmText: 'Adelantar 20',
                 cancelText:  'Hoy no',
@@ -404,7 +442,7 @@ async function sprintSiguiente() {
 
     // 3. Consolidación (fase 2): frágiles aún no repasadas en esta fase
     if (cfg.hoy.fase === 'consolidacion' && cfg.hoy.consolidadasHechas < cfg.hoy.cuotaConsolida) {
-        const fragil = sprintFragilesPendientes(cfg, estados, preguntas)
+        const fragil = sprintPoolConsolida(cfg, estados, preguntas, hoy)
             .find(st => !enCola.has(st.id) && st.id !== actual);
         if (fragil) return { q: preguntas.get(fragil.id), origen: 'consolida' };
     }
@@ -507,10 +545,11 @@ async function sprintRegistrar(q, ok) {
 
     // En la fase 2, cualquier respuesta a una frágil pendiente cuenta como consolidada
     if (cfg.hoy.fase === 'consolidacion') {
-        const inicioFase = sprintSumarDias(cfg.examen, -SPRINT_DIAS_CONSOLIDA);
-        const pendiente  = !st.consolidada || st.consolidada < inicioFase;
-        if (pendiente && (origen === 'consolida' || eraFragil)) {
-            st.consolidada = hoy;
+        const pendiente = !st.consolidada || st.consolidada < sprintInicioFase(cfg);
+        // Toda respuesta de consolidación cuenta (también las de «Repasar 20 más»),
+        // y una frágil pendiente que salga como repaso también cuenta.
+        if (origen === 'consolida' || (pendiente && eraFragil)) {
+            if (pendiente) st.consolidada = hoy;
             cfg.hoy.consolidadasHechas = Math.min(cfg.hoy.cuotaConsolida, cfg.hoy.consolidadasHechas + 1);
         }
     }

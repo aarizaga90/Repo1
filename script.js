@@ -140,6 +140,7 @@ async function boot() {
     }
     await syncQuestionTexts();
     if (typeof applySpecificAnswers === 'function') await applySpecificAnswers();
+    await asegurarVolcadoSprint();
     await refreshHome();
     await showAppVersion();
     initServiceWorker();
@@ -173,6 +174,70 @@ async function syncQuestionTexts() {
         await db.preguntas.bulkUpdate(cambios);
         log(`Textos completados: ${cambios.length} preguntas`);
     }
+}
+
+// ─── Volcado único Sprint → modo inteligente ───
+// Suma al modo inteligente lo respondido en el Sprint antes de que existiera la
+// sincronización en tiempo real. Se ejecuta una sola vez (marca en sprintCfg).
+// Nunca borra: suma aciertos/fallos a lo que hubiera y solo recalcula la
+// programación si el trabajo del Sprint es más reciente que el de la estadística.
+let _volcadoSprint = null;
+function asegurarVolcadoSprint() {
+    if (!_volcadoSprint) {
+        _volcadoSprint = volcarSprintAInteligente().catch(e => {
+            console.error('Volcado Sprint → inteligente:', e);
+            _volcadoSprint = null;
+        });
+    }
+    return _volcadoSprint;
+}
+
+async function volcarSprintAInteligente() {
+    if (!db.sprint || !db.sprintCfg) return;
+    const DIA = 24 * 60 * 60 * 1000;
+
+    await db.transaction('rw', db.sprint, db.sprintCfg, db.stats, async () => {
+        if (await db.sprintCfg.get('volcadoInteligente')) return;
+
+        const estados = await db.sprint.toArray();
+        const existentes = new Map((await db.stats.bulkGet(estados.map(s => s.id)))
+            .filter(Boolean).map(s => [s.id, s]));
+        const nuevos = [];
+
+        for (const st of estados) {
+            const aciertos = st.aciertos || 0;
+            const fallos   = st.fallos   || 0;
+            if (aciertos + fallos === 0) continue;
+
+            const prev = existentes.get(st.id);
+            const stat = prev
+                ? { ...prev }
+                : { id: st.id, correct: 0, wrong: 0, racha: 0, peso: 1, intervalo: 0, facilidad: 2.5, dueDate: Date.now(), last: 0 };
+
+            stat.correct = (stat.correct || 0) + aciertos;
+            stat.wrong   = (stat.wrong   || 0) + fallos;
+
+            const [y, m, d] = (st.ultimoDia || st.primerDia || '').split('-').map(Number);
+            const ultimaSprint = y ? new Date(y, m - 1, d, 12).getTime() : Date.now();
+
+            if (ultimaSprint >= (prev?.last || 0)) {
+                // Programación equivalente a la del modo inteligente
+                const racha = st.ultimo === 'ko' ? 0 : (st.estado === 'dominada' ? 2 : 1);
+                stat.racha     = racha;
+                stat.intervalo = racha === 0 ? 0 : (racha === 1 ? 1 : 3);
+                stat.facilidad = Math.min(3.5, Math.max(1.3, (prev?.facilidad || 2.5) + 0.1 * aciertos - 0.3 * fallos));
+                stat.peso      = Math.min(20, Math.max(0.05, (prev?.peso || 1) * Math.pow(0.5, aciertos) * Math.pow(2.5, fallos)));
+                stat.last      = ultimaSprint;
+                stat.dueDate   = ultimaSprint + stat.intervalo * DIA;
+            }
+            nuevos.push(stat);
+        }
+
+        if (nuevos.length) await db.stats.bulkPut(nuevos);
+        await db.sprintCfg.put({ key: 'volcadoInteligente', fecha: Date.now(), preguntas: nuevos.length });
+        log(`Volcado Sprint → inteligente: ${nuevos.length} preguntas`);
+    });
+    homeDirty = true;
 }
 
 // ═══════════════════════════════════════
@@ -949,7 +1014,9 @@ async function selectAnswer(chosen) {
 
     try {
         if (session.mode === 'sprint') {
+            await asegurarVolcadoSprint();      // antes de registrar: evita contar doble
             await sprintRegistrar(q, isCorrect);
+            await recordAnswer(q.id, isCorrect); // el Sprint también alimenta el modo inteligente
             session.nextBuffer = await sprintSiguiente();
         } else {
             await recordAnswer(q.id, isCorrect);

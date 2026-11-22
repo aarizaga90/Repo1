@@ -1109,22 +1109,12 @@ async function getSmartNextQuestion() {
     let selected, fase, pesoSeleccionada;
 
     if (vencidas.length > 0) {
-        // Entre las vencidas se elige por sorteo ponderado con el peso efectivo
-        // (más fallos, racha baja, más tiempo sin verla → más probabilidad).
-        // Ordenar solo por dueDate producía empates masivos (p. ej. tras el
-        // volcado del Sprint) y servía las preguntas en orden de número.
         const dudosasVencidas = vencidas.filter(q => q.dudosa === 1);
         const pool = dudosasVencidas.length > 0 ? dudosasVencidas : vencidas;
-        const weighted = pool.map(q => ({ q, peso: calcularPesoEfectivo(q, statsMap.get(q.id), ahora) }));
-        const totalPeso = weighted.reduce((acc, w) => acc + w.peso, 0);
-        let r = Math.random() * totalPeso;
-        selected = weighted[weighted.length - 1].q;
-        pesoSeleccionada = weighted[weighted.length - 1].peso;
-        for (const w of weighted) {
-            r -= w.peso;
-            if (r <= 0) { selected = w.q; pesoSeleccionada = w.peso; break; }
-        }
+        const top = pool.slice(0, Math.min(5, pool.length));
+        selected = top[Math.floor(Math.random() * top.length)];
         fase = 'VENCIDA';
+        pesoSeleccionada = calcularPesoEfectivo(selected, statsMap.get(selected.id), ahora);
 
     } else if (nuevas.length > 0) {
         selected = nuevas[Math.floor(Math.random() * nuevas.length)];

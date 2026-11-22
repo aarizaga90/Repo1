@@ -1097,12 +1097,30 @@ async function getSmartNextQuestion() {
 
     const ahora = Date.now();
 
+    // Orden de las vencidas: fecha de repaso (al segundo); si empatan, más peso
+    // efectivo primero; después, más fallos; y, si sigue el empate, al azar
+    // (no en el orden de la base de datos).
     const vencidas = candidatas
         .filter(q => {
             const s = statsMap.get(q.id);
             return s && s.dueDate && s.dueDate <= ahora;
         })
-        .sort((a, b) => statsMap.get(a.id).dueDate - statsMap.get(b.id).dueDate);
+        .map(q => {
+            const s = statsMap.get(q.id);
+            return {
+                q,
+                seg:   Math.floor(s.dueDate / 1000),
+                peso:  calcularPesoEfectivo(q, s, ahora),
+                fallos: s.wrong || 0,
+                azar:  Math.random()
+            };
+        })
+        .sort((a, b) =>
+            (a.seg - b.seg) ||
+            (b.peso - a.peso) ||
+            (b.fallos - a.fallos) ||
+            (a.azar - b.azar))
+        .map(v => v.q);
 
     const nuevas = candidatas.filter(q => !statsMap.has(q.id));
 
